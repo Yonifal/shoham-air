@@ -20,7 +20,19 @@
   .night .t { font-size:13px; opacity:.9; } .night .l { font-size:18px; font-weight:700; margin:4px 0; }
   .low { background:var(--green); } .medium { background:var(--orange); } .high { background:var(--red); }
   h2 { font-size:15px; margin:0 0 10px; }
-  svg { width:100%; height:120px; display:block; }
+  :root { --night:rgba(70,80,120,.13); --grid:rgba(0,0,0,.08); }
+  @media (prefers-color-scheme: dark) { :root { --night:rgba(140,150,220,.14); --grid:rgba(255,255,255,.1); } }
+  .chead { display:flex; justify-content:space-between; align-items:center; }
+  .chead h2 { margin:0; }
+  .tabs button { border:1px solid var(--grid); background:transparent; color:var(--mute); padding:5px 12px; border-radius:20px; font:inherit; font-size:13px; cursor:pointer; }
+  .tabs button.on { background:var(--ink); color:var(--card); border-color:var(--ink); }
+  .csum { font-size:14px; margin:10px 0 4px; min-height:20px; }
+  .cwrap { position:relative; direction:ltr; }
+  svg { width:100%; height:auto; display:block; touch-action:pan-y; }
+  svg text { font-size:11px; fill:var(--mute); font-family:inherit; }
+  .tip { position:absolute; top:0; pointer-events:none; background:var(--ink); color:var(--card); font-size:12px; padding:5px 8px; border-radius:8px; white-space:nowrap; display:none; direction:rtl; transform:translateX(-50%); }
+  .keys { display:flex; gap:14px; font-size:12px; color:var(--mute); margin-top:6px; flex-wrap:wrap; }
+  .keys i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-left:4px; vertical-align:-1px; }
   .legend { font-size:12px; color:var(--mute); margin-top:6px; }
   details { font-size:14px; line-height:1.55; } summary { cursor:pointer; font-weight:600; }
 </style>
@@ -35,8 +47,13 @@
   <div class="card"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
     <div class="legend" id="fupd"></div></div>
 
-  <div class="card"><h2>בנזן ב-48 השעות האחרונות</h2><svg id="chart" viewBox="0 0 500 120" preserveAspectRatio="none"></svg>
-    <div class="legend">הקו המקווקו: 3 מק"ג/מ"ק, הסף שמעליו נחשב עשן</div></div>
+  <div class="card">
+    <div class="chead"><h2>48 השעות האחרונות</h2>
+      <div class="tabs"><button data-k="bz" class="on">בנזן</button><button data-k="pm">PM2.5</button></div></div>
+    <div class="csum" id="csum"></div>
+    <div class="cwrap"><svg id="chart" viewBox="0 0 520 210"></svg><div class="tip" id="tip"></div></div>
+    <div class="keys"><span><i style="background:var(--green)"></i>נקי</span><span><i style="background:var(--orange)"></i>עשן</span><span><i style="background:var(--red)"></i>כבד</span><span><i style="background:var(--night)"></i>לילה</span></div>
+    <div class="legend">גע או רחף מעל הגרף כדי לראות ערך לפי שעה</div></div>
 
   <div class="card"><details><summary>איך זה עובד?</summary>
     <p>העשן מגיע להדרים כמעט רק כשהרוח נושבת ממזרח או מדרום-מזרח, חלשה, ומתחת לשכבת היפוך נמוכה. זה קורה בעיקר בלילה, עם שיא סביב 03:00.
@@ -56,15 +73,63 @@ fetch("data/live.json?"+Date.now()).then(r=>r.json()).then(L=>{
   document.getElementById("now").innerHTML =
     `<div class="dot" style="background:${COL[L.status]}"></div><div><div class="big">${TXT[L.status]}</div>
      <div class="mute">בנזן ${L.benzene} · PM2.5 ${L.pm25 ?? "—"} · מדידה ${hm(L.time)}</div></div>`;
-  const pts = L.last48.filter(p=>p.bz!==null); if(!pts.length) return;
-  const max = Math.max(6, ...pts.map(p=>p.bz)), n = L.last48.length;
-  const xy = L.last48.map((p,i)=>p.bz===null?null:[i/(n-1)*500, 115-p.bz/max*105]);
-  let d=""; xy.forEach((q,i)=>{ if(q) d += (d && xy[i-1] ? "L":"M")+q[0].toFixed(1)+","+q[1].toFixed(1); });
-  const y3 = 115-3/max*105;
-  document.getElementById("chart").innerHTML =
-    `<line x1="0" x2="500" y1="${y3}" y2="${y3}" stroke="var(--orange)" stroke-dasharray="4 4"/>
-     <path d="${d}" fill="none" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+  drawChart(L.last48, "bz");
+  document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+    document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+    drawChart(L.last48, b.dataset.k);
+  });
 }).catch(()=>{ document.querySelector("#now .big").textContent="אין נתונים מהניידת כרגע"; });
+
+// Hourly bars coloured by level, night hours shaded, tap/hover for exact value
+const SPEC = {
+  bz: { name:"בנזן", unit:'מק"ג/מ"ק', warn:3, heavy:8, floor:6 },
+  pm: { name:"PM2.5", unit:'מק"ג/מ"ק', warn:35, heavy:75, floor:50 },
+};
+function drawChart(rows, k) {
+  const S = SPEC[k], svg = document.getElementById("chart"), tip = document.getElementById("tip");
+  const W = 520, H = 210, L0 = 30, R0 = 6, T0 = 8, B0 = 34, pw = W - L0 - R0, ph = H - T0 - B0;
+  const n = rows.length, bw = pw / n;
+  const vals = rows.map(r => r[k]);
+  const max = Math.max(S.floor, ...vals.filter(v => v !== null)) * 1.08;
+  const y = v => T0 + ph - (v / max) * ph, x = i => L0 + i * bw;
+  const t = rows.map(r => new Date(r.t.replace(" ", "T")));
+  const col = v => v >= S.heavy ? "var(--red)" : v >= S.warn ? "var(--orange)" : "var(--green)";
+  let g = "";
+  // night shading 18:00–07:00
+  rows.forEach((r, i) => { const h = t[i].getHours(); if (h >= 18 || h < 7) g += `<rect x="${x(i)}" y="${T0}" width="${bw + .5}" height="${ph}" fill="var(--night)"/>`; });
+  // gridlines at thresholds
+  [[S.warn, "var(--orange)"], [S.heavy, "var(--red)"]].forEach(([v, c]) => { if (v < max)
+    g += `<line x1="${L0}" x2="${W - R0}" y1="${y(v)}" y2="${y(v)}" stroke="${c}" stroke-dasharray="4 3" opacity=".8"/><text x="${L0 - 4}" y="${y(v) + 4}" text-anchor="end">${v}</text>`; });
+  g += `<line x1="${L0}" x2="${W - R0}" y1="${T0 + ph}" y2="${T0 + ph}" stroke="var(--grid)"/><text x="${L0 - 4}" y="${T0 + ph + 4}" text-anchor="end">0</text>`;
+  // bars
+  vals.forEach((v, i) => { if (v === null) return; const h = Math.max(1.5, T0 + ph - y(v));
+    g += `<rect x="${x(i) + bw * .12}" y="${T0 + ph - h}" width="${bw * .76}" height="${h}" rx="1.5" fill="${col(v)}"/>`; });
+  // time axis: every 6 hours, date under midnight
+  rows.forEach((r, i) => { const h = t[i].getHours(); if (h % 6) return;
+    g += `<line x1="${x(i)}" x2="${x(i)}" y1="${T0 + ph}" y2="${T0 + ph + 4}" stroke="var(--mute)"/><text x="${x(i)}" y="${T0 + ph + 16}" text-anchor="middle">${String(h).padStart(2, "0")}:00</text>`;
+    if (h === 0) g += `<text x="${x(i)}" y="${T0 + ph + 29}" text-anchor="middle" style="font-weight:600">${t[i].toLocaleDateString("he-IL", { weekday: "short", day: "numeric", month: "numeric" })}</text>`; });
+  g += `<line id="cur" y1="${T0}" y2="${T0 + ph}" stroke="var(--ink)" stroke-width="1" opacity="0"/>`;
+  svg.innerHTML = g;
+
+  // summary of the last night (18:00 → 07:00)
+  const now = t[n - 1], start = new Date(now); if (now.getHours() < 18) start.setDate(start.getDate() - 1); start.setHours(18, 0, 0, 0);
+  const night = rows.map((r, i) => ({ v: r[k], t: t[i] })).filter(p => p.t >= start && p.v !== null && (p.t.getHours() >= 18 || p.t.getHours() < 7));
+  const bad = night.filter(p => p.v >= S.warn), peak = night.reduce((a, b) => (b.v > (a?.v ?? -1) ? b : a), null);
+  const ttl = now.getHours() >= 18 ? "הערב עד עכשיו" : "בלילה האחרון";
+  document.getElementById("csum").innerHTML = !night.length ? "" : bad.length
+    ? `${ttl}: <b style="color:var(--orange)">${bad.length} שעות עשן</b>, שיא ${peak.v} ב-${peak.t.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}`
+    : `${ttl}: <b style="color:var(--green)">נקי</b> (שיא ${peak.v})`;
+
+  // interaction
+  const cur = document.getElementById("cur");
+  const show = e => { const r = svg.getBoundingClientRect(), sx = (e.clientX - r.left) * W / r.width;
+    const i = Math.min(n - 1, Math.max(0, Math.floor((sx - L0) / bw))), v = vals[i];
+    cur.setAttribute("x1", x(i) + bw / 2); cur.setAttribute("x2", x(i) + bw / 2); cur.setAttribute("opacity", ".5");
+    tip.style.display = "block"; tip.style.left = ((x(i) + bw / 2) / W * 100) + "%";
+    tip.innerHTML = `${t[i].toLocaleDateString("he-IL", { weekday: "short" })} ${String(t[i].getHours()).padStart(2, "0")}:00 · ${S.name} <b>${v ?? "—"}</b>`; };
+  svg.onpointermove = show; svg.onpointerdown = show;
+  svg.onpointerleave = () => { tip.style.display = "none"; cur.setAttribute("opacity", "0"); };
+}
 
 fetch("data/forecast.json?"+Date.now()).then(r=>r.json()).then(F=>{
   document.getElementById("nights").innerHTML = F.nights.slice(0,2).map(n=>
