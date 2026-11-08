@@ -21,7 +21,8 @@ def sync(days: int = 30) -> pd.DataFrame:
     """Merge recent reports into data/reports.csv (times stored as UTC+2, like the station)."""
     path = DATA / "reports.csv"
     cols = ["time", "hood", "level", "device"]
-    old = pd.read_csv(path, parse_dates=["time"]) if path.exists() else pd.DataFrame(columns=cols)
+    old = pd.read_csv(path) if path.exists() else pd.DataFrame(columns=cols)
+    old["time"] = pd.to_datetime(old["time"])
     if not URL:
         return old
     try:
@@ -35,7 +36,9 @@ def sync(days: int = 30) -> pd.DataFrame:
     new["time"] = pd.to_datetime(new.t, utc=True).dt.tz_convert("Etc/GMT-2").dt.tz_localize(None)
     new["device"] = new.note.astype(str).str.extract(r"d:([a-z0-9]+)", expand=False).fillna("unknown")
     new = new[cols]
-    allr = pd.concat([old, new]).drop_duplicates(subset=["time", "hood", "device"]).sort_values("time")
+    allr = pd.concat([old, new])
+    allr["time"] = pd.to_datetime(allr.time)
+    allr = allr.drop_duplicates(subset=["time", "hood", "device"]).sort_values("time")
     allr.to_csv(path, index=False)
     return allr
 

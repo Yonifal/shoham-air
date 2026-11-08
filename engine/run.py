@@ -46,11 +46,16 @@ def cmd_live():
     partial = raw[raw.index >= cur_hour].mean(numeric_only=True)
     hist = pd.concat([hist, partial.to_frame(cur_hour).T])
     hist = hist.reindex(pd.date_range(cur_hour - pd.Timedelta(hours=47), cur_hour, freq="h"))
-    rep = reports.sync()
-    if not rep.empty:
-        reports.device_reliability(rep, st).round(2).to_csv(DATA / "device_reliability.csv")
     now_t = raw.index[-1] + pd.Timedelta(minutes=5)
-    rep_by_hour = rep.time.dt.floor("h").value_counts() if not rep.empty else pd.Series(dtype=int)
+    try:  # residents' reports must never break the station check
+        rep = reports.sync()
+        if not rep.empty:
+            reports.device_reliability(rep, st).round(2).to_csv(DATA / "device_reliability.csv")
+        rep_by_hour = rep.time.dt.floor("h").value_counts() if not rep.empty else pd.Series(dtype=int)
+        rep_summary = reports.recent_summary(rep, now_t)
+    except Exception as e:
+        print("reports failed:", e)
+        rep_by_hour, rep_summary = pd.Series(dtype=int), {}
     north = None
     try:
         nr = station.fetch_raw(1, NORTH_STATION_ID).dropna(subset=["PM2.5"])
@@ -61,7 +66,7 @@ def cmd_live():
         print("north station failed:", e)
     _save("live.json", {
         "north": north,
-        "reports": reports.recent_summary(rep, now_t),
+        "reports": rep_summary,
         "station": STATION_NAME, "time": str(raw.index[-1] + pd.Timedelta(minutes=5)),
         "status": status, "benzene": round(bz, 2),
         "pm25": None if pd.isna(pm) else round(float(pm), 1),
