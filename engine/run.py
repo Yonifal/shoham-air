@@ -33,18 +33,24 @@ def level(p):
 
 
 def cmd_live():
-    st = station.update_archive(days_back=2)
-    recent = st.dropna(subset=["Benzene"]).tail(3)
-    last = recent.iloc[-1]
-    bz = float(last.Benzene)
+    st, raw = station.update_archive(days_back=2)
+    raw = raw.dropna(subset=["Benzene"])
+    now15 = raw.tail(3)                       # last 15 minutes of 5-min readings
+    bz = float(now15.Benzene.mean())
+    pm = now15["PM2.5"].mean()
     status = "heavy" if bz >= BENZENE_HEAVY else "smoke" if bz >= BENZENE_SMOKE else "clean"
-    hist = st.tail(48)
+    # 48 whole hours ending with the current (possibly partial) hour
+    cur_hour = raw.index[-1].floor("h")
+    hist = st[(st.index > cur_hour - pd.Timedelta(hours=48)) & (st.index < cur_hour)]
+    partial = raw[raw.index >= cur_hour].mean(numeric_only=True)
+    hist = pd.concat([hist, partial.to_frame(cur_hour).T])
+    hist = hist.reindex(pd.date_range(cur_hour - pd.Timedelta(hours=47), cur_hour, freq="h"))
     _save("live.json", {
-        "station": STATION_NAME, "time": str(recent.index[-1] + pd.Timedelta(hours=1)),
+        "station": STATION_NAME, "time": str(raw.index[-1] + pd.Timedelta(minutes=5)),
         "status": status, "benzene": round(bz, 2),
-        "pm25": None if pd.isna(last.get("PM2.5")) else round(float(last["PM2.5"]), 1),
-        "last48": [{"t": str(t), "bz": None if pd.isna(r.Benzene) else round(r.Benzene, 2),
-                    "pm": None if pd.isna(r["PM2.5"]) else round(r["PM2.5"], 1)}
+        "pm25": None if pd.isna(pm) else round(float(pm), 1),
+        "last48": [{"t": str(t), "bz": None if pd.isna(r.Benzene) else round(float(r.Benzene), 2),
+                    "pm": None if pd.isna(r["PM2.5"]) else round(float(r["PM2.5"]), 1)}
                    for t, r in hist.iterrows()],
         "updated": datetime.now(IL).isoformat(timespec="minutes"),
     })
@@ -56,8 +62,8 @@ def cmd_live():
             "heavy": f"🔴 זיהום כבד בהדרים: בנזן {bz:.1f}. סגרו חלונות, הפעילו מטהר.",
             "clean": "🟢 האוויר בהדרים חזר לנקי. אפשר לאוורר.",
         }[status]
-        # avoid flapping: announce "clean" only after 2 consecutive clean hours
-        if status != "clean" or (recent.Benzene.tail(2) < BENZENE_SMOKE).all():
+        # avoid flapping: announce "clean" only after a full clean hour
+        if status != "clean" or (raw.tail(12).Benzene < BENZENE_SMOKE).all():
             notify.send(msg)
             s["live_status"] = status
             STATE.write_text(json.dumps(s))

@@ -36,16 +36,28 @@ async def _fetch(days_back: int, timebase: int) -> pd.DataFrame:
     return df.sort_index()
 
 
-def fetch(days_back: int = 1, timebase: int = 60) -> pd.DataFrame:
-    return asyncio.run(_fetch(days_back, timebase))
+def fetch_raw(days_back: int = 1) -> pd.DataFrame:
+    """5-minute readings (the API returns 5-min data regardless of the requested timebase).
+    It also pads the rest of today with empty rows, which we drop."""
+    return asyncio.run(_fetch(days_back, 5)).dropna(how="all")
 
 
-def update_archive(days_back: int = 2) -> pd.DataFrame:
-    """Append the latest hourly values to data/station.csv and return the full archive."""
+def hourly(raw: pd.DataFrame) -> pd.DataFrame:
+    """Hourly means, kept only when at least half the 5-min readings exist (like the Ministry's 'valid hour')."""
+    g = raw.resample("h")
+    means, counts = g.mean(), g.count()
+    return means.where(counts >= 6).dropna(how="all")
+
+
+def update_archive(days_back: int = 2):
+    """Merge fresh hourly values into data/station.csv. Returns (hourly archive, latest 5-min readings)."""
     path = DATA / "station.csv"
     old = pd.read_csv(path, index_col=0, parse_dates=True) if path.exists() else pd.DataFrame()
-    new = fetch(days_back, 60).dropna(how="all")  # API pads the rest of today with empty hours
+    if not old.empty:  # keep only whole-hour rows (cleans up any earlier 5-min rows)
+        old = old[(old.index.minute == 0)]
+    raw = fetch_raw(days_back)
+    new = hourly(raw)
     allx = new.combine_first(old) if not old.empty else new  # fresh values win, gaps keep old ones
-    allx = allx.dropna(how="all").sort_index()
+    allx = allx.dropna(how="all").sort_index().round(2)
     allx.to_csv(path)
-    return allx
+    return allx, raw
