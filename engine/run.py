@@ -12,7 +12,7 @@ import pandas as pd
 
 from . import model, notify, reports, station, weather
 from .config import (BENZENE_HEAVY, BENZENE_SMOKE, DATA, LEVELS, NORTH_STATION_ID, NORTH_STATION_NAME,
-                     SITE_DATA, STATION_NAME)
+                     REST_BASE, REST_LEVELS, REST_SLOPE, SITE_DATA, STATION_NAME)
 
 STATE = DATA / "state.json"
 IL = timezone(timedelta(hours=2))
@@ -104,8 +104,10 @@ def cmd_forecast():
         hrs = risk[(risk.index >= night + pd.Timedelta(hours=18)) &
                    (risk.index < night + pd.Timedelta(hours=31))]
         on = hrs[hrs == 1].index
+        pr = REST_BASE + REST_SLOPE * float(prob)
+        rkey, rlabel = next((k, l) for t, k, l in REST_LEVELS if pr >= t)
         nights.append({"night": str(night.date()), "prob": round(float(prob), 2), "level": key,
-                       "label": label,
+                       "label": label, "rest": {"prob": round(pr, 2), "level": rkey, "label": rlabel},
                        "window": [str(on.min().strftime("%H:%M")), str(on.max().strftime("%H:%M"))]
                        if len(on) else None})
     hourly = w.assign(risk=risk)[["ws", "wd", "blh", "risk"]].round(1)

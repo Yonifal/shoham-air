@@ -47,3 +47,9 @@ WEATHER_VARS = [
 REPORTS_URL = "https://script.google.com/macros/s/AKfycbzHwwyeOOYUARlirW-TghWBI7UMS-7Agdvi8SZ_wCMEan_Exriqc5IOzJ2_GiGblkVUSQ/exec"
 CONFIRM_DEVICES = 3        # distinct devices in the same neighbourhood…
 CONFIRM_MINUTES = 30       # …within this window = a confirmed smoke event
+
+# Rest of Shoham (no benzene measurement there). From Dec 2025–Nov 2026 history of the permanent
+# central/north station (598, PM2.5): a "bad night" there followed 33% of Hadarim bad nights and 13%
+# of Hadarim clean nights. So:  p_rest ≈ REST_BASE + REST_SLOPE · p_hadarim
+REST_BASE, REST_SLOPE = 0.13, 0.20
+REST_LEVELS = [(0.22, "medium", "סיכון"), (0.0, "low", "סיכון נמוך")]

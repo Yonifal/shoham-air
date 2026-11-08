@@ -36,6 +36,9 @@
   .lv button { padding:12px 4px; border-radius:12px; border:1px solid var(--grid); background:var(--bg); color:var(--ink); font:inherit; font-size:14px; cursor:pointer; }
   .lv button:disabled { opacity:.45; cursor:default; }
   #repmsg { margin-top:8px; min-height:18px; }
+  .hoodcard label { font-weight:600; font-size:15px; }
+  .hoodcard select { margin-bottom:4px; font-size:16px; }
+  .night .r { font-size:12px; opacity:.85; }
   .keys { display:flex; gap:14px; font-size:12px; color:var(--mute); margin-top:6px; flex-wrap:wrap; }
   .keys i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-left:4px; vertical-align:-1px; }
   .legend { font-size:12px; color:var(--mute); margin-top:6px; }
@@ -47,16 +50,19 @@
   <h1>אוויר בשוהם</h1>
   <div class="sub">תחזית עשן, מצב בזמן אמת ודיווחי תושבים · ניידת הניטור של המשרד להגנת הסביבה (האתרוג, הדרים) ותחזית רוח</div>
 
+  <div class="card hoodcard"><label for="hood">השכונה שלי</label>
+    <select id="hood"><option value="">בחרו שכונה…</option>
+      <option>הדרים</option><option>יעלים</option><option>כרמים</option><option>טללים</option>
+      <option>סחלבים</option><option>חמניות</option><option>גבעולים</option><option>ברושים</option><option>אחר</option></select>
+    <div class="legend" id="basis"></div></div>
+
   <div class="card now" id="now"><div class="dot" style="background:#ccc"></div><div><div class="big">טוען…</div></div></div>
 
 
   <div class="card" id="report">
     <h2>מריחים עשן עכשיו?</h2>
     <div class="mute" style="margin-bottom:10px">הדיווחים מראים לנו לאן העשן מגיע בכל שוהם, גם רחוק מהניידת. אין צורך בפרטים אישיים.</div>
-    <label class="mute">השכונה שלי</label>
-    <select id="hood"><option value="">בחרו שכונה…</option>
-      <option>הדרים</option><option>יעלים</option><option>כרמים</option><option>טללים</option>
-      <option>סחלבים</option><option>חמניות</option><option>גבעולים</option><option>ברושים</option><option>אחר</option></select>
+    <div class="mute" id="rephood" style="margin-bottom:8px"></div>
     <div class="lv">
       <button data-l="1">🟡 ריח קל</button><button data-l="2">🟠 ריח חזק</button><button data-l="3">🔴 קשה לנשום</button>
     </div>
@@ -65,11 +71,11 @@
   </div>
 
   <div class="card"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
-    <div class="legend">התחזית מבוססת על ניידת המשרד להגנת הסביבה ב<b>הדרים</b> (האתרוג 60), שמודדת בנזן, ועל תחזית רוח. בשאר השכונות העשן בדרך כלל חלש יותר. ראו "איך זה עובד".</div>
+    <div class="legend" id="fbasis"></div>
     <div class="legend" id="fupd"></div></div>
 
   <div class="card">
-    <div class="chead"><h2>48 השעות האחרונות</h2>
+    <div class="chead"><h2>ניידת הדרים: 48 שעות</h2>
       <div class="tabs"><button data-k="bz" class="on">בנזן</button><button data-k="pm">PM2.5</button></div></div>
     <div class="csum" id="csum"></div>
     <div class="cwrap"><svg id="chart" viewBox="0 0 520 210"></svg><div class="tip" id="tip"></div></div>
@@ -97,11 +103,51 @@ const hm = s => new Date(s.replace(" ","T")).toLocaleTimeString("he-IL",{hour:"2
 const dayName = d => { const t=new Date(); t.setHours(0,0,0,0); const x=new Date(d+"T00:00");
   const diff=Math.round((x-t)/864e5); return diff===0?"הלילה":diff===1?"מחר בלילה":x.toLocaleDateString("he-IL",{weekday:"long"})+" בלילה"; };
 
+// ---- neighbourhood view ----
+let LIVE = null, FC = null;
+const HOOD = () => document.getElementById("hood").value;
+const isHadarim = h => !h || h === "הדרים";
+function renderBasis() {
+  const h = HOOD();
+  document.getElementById("basis").innerHTML = isHadarim(h)
+    ? "מדידה ישירה: ניידת המשרד להגנת הסביבה ברחוב האתרוג 60, שמודדת בנזן, הסימן המובהק לשריפת פלסטיק."
+    : `<b>אין מדידת בנזן ב${h}.</b> המצב מוערך לפי התחנה הקבועה במרכז-צפון שוהם (PM2.5 בלבד), לפי ניידת הדרים ולפי דיווחי תושבים. התחזית פחות מדויקת מזו של הדרים.`;
+  document.getElementById("rephood").innerHTML = h ? `מדווחים מ<b>${h}</b> (אפשר להחליף למעלה)` : "בחרו שכונה למעלה כדי לדווח";
+}
+function renderNow() {
+  const L = LIVE; if (!L) return; const h = HOOD();
+  const hadarimLine = `ניידת הדרים (האתרוג): בנזן ${L.benzene} · PM2.5 ${L.pm25 ?? "—"} · ${hm(L.time)}`;
+  const northLine = L.north ? `תחנה קבועה מרכז-צפון: PM2.5 ${L.north.pm25} · ${hm(L.north.time)}` : "תחנה קבועה מרכז-צפון: אין נתונים עדכניים מהמשרד";
+  let col, txt, lines;
+  if (isHadarim(h)) { col = COL[L.status]; txt = TXT[L.status]; lines = [hadarimLine, northLine]; }
+  else {
+    const rep = (L.reports || {})[h];
+    if (rep && rep.confirmed) { col = COL.smoke; txt = `תושבים ב${h} מדווחים על עשן`; }
+    else if (L.north && L.north.pm25 >= 35) { col = COL.smoke; txt = "ייתכן עשן עכשיו"; }
+    else if (L.status !== "clean") { col = "#d9a441"; txt = "יש עשן בהדרים, ייתכן שיגיע גם אליכם"; }
+    else { col = COL.clean; txt = "ככל הנראה נקי עכשיו"; }
+    lines = [northLine, hadarimLine + " (לייחוס)", rep ? `דיווחים מ${h} ב-3 השעות האחרונות: ${rep.n}` : `אין דיווחים מ${h} ב-3 השעות האחרונות`];
+  }
+  document.getElementById("now").innerHTML = `<div class="dot" style="background:${col}"></div><div><div class="big">${txt}</div>` +
+    lines.map(l => `<div class="mute">${l}</div>`).join("") + `</div>`;
+}
+function renderNights() {
+  const F = FC; if (!F) return; const h = HOOD(), had = isHadarim(h);
+  document.getElementById("nights").innerHTML = F.nights.slice(0, 2).map(n => {
+    const v = had || !n.rest ? n : n.rest;
+    const win = had && n.level !== "low" && n.window ? "צפי " + n.window[0] + "–" + n.window[1] + " · " : "";
+    const other = had || !n.rest ? "" : `<div class="r">בהדרים: ${n.label} (${Math.round(n.prob * 100)}%)</div>`;
+    return `<div class="night ${v.level}"><div class="t">${dayName(n.night)}</div><div class="l">${v.label}</div>
+      <div class="t">${win}${Math.round(v.prob * 100)}%</div>${other}</div>`; }).join("");
+  document.getElementById("fbasis").innerHTML = had
+    ? "התחזית מבוססת על ניידת הדרים (בנזן) ועל תחזית רוח. בבדיקה על החורף שעבר היא זיהתה 72% מהלילות המזוהמים."
+    : `התחזית ל${h} נגזרת מהתחזית של הדרים ומההיסטוריה של התחנה הקבועה במרכז-צפון: בלילות שבהם הדרים הייתה מזוהמת, במרכז-צפון היה עשן ב-33% מהמקרים. כשהדרים הייתה נקייה, ב-13% בלבד. זו הערכה גסה, והדיווחים שלכם ישפרו אותה.`;
+  document.getElementById("fupd").textContent = "עודכן " + new Date(F.updated).toLocaleString("he-IL");
+}
+function renderAll() { renderBasis(); renderNow(); renderNights(); }
+
 fetch("data/live.json?"+Date.now()).then(r=>r.json()).then(L=>{
-  document.getElementById("now").innerHTML =
-    `<div class="dot" style="background:${COL[L.status]}"></div><div><div class="big">${TXT[L.status]}</div>
-     <div class="mute">ניידת הדרים (האתרוג): בנזן ${L.benzene} · PM2.5 ${L.pm25 ?? "—"} · ${hm(L.time)}</div>
-     <div class="mute">${L.north ? `תחנה קבועה מרכז-צפון שוהם: PM2.5 ${L.north.pm25} · ${hm(L.north.time)}` : "תחנה קבועה מרכז-צפון שוהם: אין נתונים עדכניים"}</div></div>`;
+  LIVE = L; renderNow();
   drawChart(L.last48, "bz");
   showReports(L.reports);
   document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
@@ -162,12 +208,7 @@ function drawChart(rows, k) {
   svg.onpointerleave = () => { tip.style.display = "none"; cur.setAttribute("opacity", "0"); };
 }
 
-fetch("data/forecast.json?"+Date.now()).then(r=>r.json()).then(F=>{
-  document.getElementById("nights").innerHTML = F.nights.slice(0,2).map(n=>
-    `<div class="night ${n.level}"><div class="t">${dayName(n.night)}</div><div class="l">${n.label}</div>
-     <div class="t">${n.level!=="low" && n.window ? "צפי "+n.window[0]+"–"+n.window[1]+" · " : ""}${Math.round(n.prob*100)}%</div></div>`).join("");
-  document.getElementById("fupd").textContent = "עודכן "+new Date(F.updated).toLocaleString("he-IL");
-});
+fetch("data/forecast.json?"+Date.now()).then(r=>r.json()).then(F=>{ FC = F; renderNights(); });
 
 // ---- residents' smoke reports ----
 const REPORTS_URL = "https://script.google.com/macros/s/AKfycbzHwwyeOOYUARlirW-TghWBI7UMS-7Agdvi8SZ_wCMEan_Exriqc5IOzJ2_GiGblkVUSQ/exec";   // Apps Script web-app URL (reports/Code.gs)
@@ -177,7 +218,8 @@ const REPORTS_URL = "https://script.google.com/macros/s/AKfycbzHwwyeOOYUARlirW-T
   const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
                set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
   sel.value = ls.get("hood") || "";
-  sel.onchange = () => ls.set("hood", sel.value);
+  sel.onchange = () => { ls.set("hood", sel.value); renderAll(); };
+  renderBasis();
   if (!REPORTS_URL) { btns.forEach(b => b.disabled = true); msg.textContent = "הדיווחים ייפתחו בקרוב"; return; }
   // anonymous random device id: lets us weigh reports per device without any personal data
   let dev = ls.get("dev"); if (!dev) { dev = Math.random().toString(36).slice(2, 10); ls.set("dev", dev); }
@@ -185,7 +227,7 @@ const REPORTS_URL = "https://script.google.com/macros/s/AKfycbzHwwyeOOYUARlirW-T
   const lock = () => { btns.forEach(b => b.disabled = true); msg.textContent = "תודה! אפשר לדווח שוב בעוד חצי שעה."; };
   if (Date.now() - last < 30 * 60e3) lock();
   btns.forEach(b => b.onclick = () => {
-    if (!sel.value) { msg.textContent = "בחרו שכונה קודם 🙂"; sel.focus(); return; }
+    if (!sel.value) { msg.textContent = "בחרו שכונה למעלה קודם 🙂"; sel.scrollIntoView({behavior:"smooth"}); sel.focus(); return; }
     btns.forEach(x => x.disabled = true); msg.textContent = "שולח…";
     fetch(REPORTS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ hood: sel.value, level: +b.dataset.l, note: "d:" + dev }) })
