@@ -38,3 +38,30 @@ def forecast(days: int = 3, past_days: int = 2) -> pd.DataFrame:
                  {**params, "hourly": "boundary_layer_height", "models": "gfs_seamless"})
         df["blh"] = g["blh"].reindex(df.index)
     return df
+
+
+MODELS = {  # Open-Meteo model id -> display name
+    "ecmwf_ifs025": "אירופי (ECMWF)",
+    "icon_seamless": "גרמני (ICON)",
+    "gfs_seamless": "אמריקאי (GFS)",
+    "meteofrance_seamless": "צרפתי",
+    "ukmo_seamless": "בריטי",
+}
+
+
+def forecast_multi(days: int = 3, past_days: int = 1) -> dict:
+    """One weather table per model. Only GFS publishes mixing height, so every model uses the GFS value."""
+    r = requests.get("https://api.open-meteo.com/v1/forecast", params={
+        "latitude": LAT, "longitude": LON, "hourly": ",".join(WEATHER_VARS), "models": ",".join(MODELS),
+        "wind_speed_unit": "ms", "timezone": TZ, "forecast_days": days, "past_days": past_days}, timeout=60)
+    r.raise_for_status()
+    h = r.json()["hourly"]
+    idx = pd.to_datetime(h["time"])
+    blh = pd.Series(h.get("boundary_layer_height_gfs_seamless"), index=idx, dtype=float)
+    out = {}
+    for m in MODELS:
+        df = pd.DataFrame({RENAME[v]: pd.Series(h.get(f"{v}_{m}"), index=idx, dtype=float) for v in WEATHER_VARS})
+        df["blh"] = df["blh"].fillna(blh)
+        if df[["wd", "ws"]].notna().mean().min() > 0.8:
+            out[m] = df
+    return out

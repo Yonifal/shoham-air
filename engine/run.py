@@ -102,40 +102,97 @@ def cmd_live():
             STATE.write_text(json.dumps(s))
 
 
+LABELS = {"high": "סיכון גבוה", "medium": "סיכון", "low": "לילה צפוי נקי", "uncertain": "לא ודאי"}
+ORDER = {"low": 0, "uncertain": 1, "medium": 1, "high": 2}
+HYST = 0.06          # a level changes only when the probability clears the threshold by this margin
+UPDATE_DELTA = 0.20  # after 15:00 the published forecast changes only on a move this big
+
+
+def classify(mean, lo, hi, prev=None):
+    """Level from the multi-model mean and spread, with hysteresis against the previous level."""
+    if hi - lo >= 0.40 and 0.15 <= mean <= 0.60:
+        return "uncertain"
+    raw = "high" if mean >= 0.50 else "medium" if mean >= 0.25 else "low"
+    if prev in ("high", "medium", "low") and prev != raw:
+        lim = {"high": 0.50, "medium": 0.25}
+        # stay on the previous level unless we are clearly past the boundary
+        if raw == "low" and prev == "medium" and mean > 0.25 - HYST: return prev
+        if raw == "medium" and prev == "low" and mean < 0.25 + HYST: return prev
+        if raw == "medium" and prev == "high" and mean > 0.50 - HYST: return prev
+        if raw == "high" and prev == "medium" and mean < 0.50 + HYST: return prev
+    return raw
+
+
 def cmd_forecast():
-    w = weather.forecast(days=3, past_days=1)
-    p = model.predict(w)
-    risk = model.hourly_risk(w)
-    today = pd.Timestamp(datetime.now(IL).date())
+    ws = weather.forecast_multi(days=3, past_days=1)
+    if not ws:
+        ws = {"gfs_seamless": weather.forecast(days=3, past_days=1)}
+    probs = pd.DataFrame({m: model.predict(w) for m, w in ws.items()})
+    mean, lo, hi = probs.mean(axis=1), probs.min(axis=1), probs.max(axis=1)
+    # hourly rule for the window: share of models flagging the hour
+    risk = pd.concat({m: model.hourly_risk(w) for m, w in ws.items()}, axis=1).mean(axis=1)
+    now = datetime.now(IL)
+    today = pd.Timestamp(now.date())
+    s = _state()
+    prev_levels = s.get("levels", {})
+    official = s.get("official", {})
     nights = []
-    for night, prob in p.items():
+    for i, night in enumerate(mean.index):
         if night < today:
             continue
-        key, label = level(prob)
-        hrs = risk[(risk.index >= night + pd.Timedelta(hours=18)) &
-                   (risk.index < night + pd.Timedelta(hours=31))]
-        on = hrs[hrs == 1].index
-        pr = REST_BASE + REST_SLOPE * float(prob)
+        key_n = str(night.date())
+        m_, lo_, hi_ = float(mean[night]), float(lo[night]), float(hi[night])
+        lvl = classify(m_, lo_, hi_, prev_levels.get(key_n))
+        n_agree = int((probs.loc[night] >= 0.25).sum()) if lvl != "low" else int((probs.loc[night] < 0.25).sum())
+        hrs = risk[(risk.index >= night + pd.Timedelta(hours=18)) & (risk.index < night + pd.Timedelta(hours=31))]
+        on = hrs[hrs >= 0.5].index
+        entry = {"night": key_n, "prob": round(m_, 2), "range": [round(lo_, 2), round(hi_, 2)],
+                 "level": lvl, "label": LABELS[lvl], "models": {weather.MODELS[m]: round(float(v), 2)
+                                                                 for m, v in probs.loc[night].items()},
+                 "agree": [n_agree, len(probs.columns)], "early": night > today,
+                 "window": [on.min().strftime("%H:%M"), on.max().strftime("%H:%M")] if len(on) else None}
+        # after 15:00 tonight's forecast is "official": keep it unless the models moved a lot
+        off = official.get(key_n)
+        if off and night == today:
+            if abs(m_ - off["prob"]) < UPDATE_DELTA or lvl == off["level"]:
+                entry.update(level=off["level"], label=LABELS[off["level"]], window=off.get("window"))
+                entry["official"] = off
+            else:
+                entry["official"] = off
+                entry["changed"] = {"from": off["level"], "at": now.strftime("%H:%M")}
+        pr = REST_BASE + REST_SLOPE * m_
         rkey, rlabel = next((k, l) for t, k, l in REST_LEVELS if pr >= t)
-        nights.append({"night": str(night.date()), "prob": round(float(prob), 2), "level": key,
-                       "label": label, "rest": {"prob": round(pr, 2), "level": rkey, "label": rlabel},
-                       "window": [str(on.min().strftime("%H:%M")), str(on.max().strftime("%H:%M"))]
-                       if len(on) else None})
-    hourly = w.assign(risk=risk)[["ws", "wd", "blh", "risk"]].round(1)
+        entry["rest"] = {"prob": round(pr, 2), "level": rkey if lvl != "uncertain" else "uncertain",
+                         "label": rlabel if lvl != "uncertain" else "לא ודאי"}
+        prev_levels[key_n] = entry["level"]
+        nights.append(entry)
+    s["levels"] = {k: v for k, v in prev_levels.items() if k >= str(today.date())}
+    tw = ws.get("gfs_seamless", next(iter(ws.values())))
+    hourly = tw.assign(risk=risk)[["ws", "wd", "blh", "risk"]].round(2)
     _save("forecast.json", {
         "nights": nights,
         "hourly": [{"t": str(t), **r.to_dict()} for t, r in hourly.iterrows()],
-        "updated": datetime.now(IL).isoformat(timespec="minutes"),
+        "updated": now.isoformat(timespec="minutes"),
     })
-    s = _state()
-    if nights and s.get("forecast_sent") != nights[0]["night"] and datetime.now(IL).hour >= 15:
+    if nights and nights[0]["night"] == str(today.date()) and now.hour >= 15:
         n = nights[0]
-        icon = {"high": "🔴", "medium": "🟠", "low": "🟢"}[n["level"]]
-        win = f" בין {n['window'][0]} ל-{n['window'][1]}" if n["window"] and n["level"] != "low" else ""
-        tip = "אפשר לאוורר הערב." if n["level"] == "low" else "מומלץ לסגור חלונות בערב ולהכין מטהר."
-        notify.send(f"{icon} תחזית הלילה בהדרים: {n['label']}{win} ({int(n['prob']*100)}%). {tip}")
-        s["forecast_sent"] = n["night"]
-        STATE.write_text(json.dumps(s))
+        icon = {"high": "🔴", "medium": "🟠", "low": "🟢", "uncertain": "🟡"}
+        tip = {"low": "אפשר לאוורר הערב.", "uncertain": "המודלים חלוקים. כדאי להיות מוכנים ולעקוב אחרי ההתראה בזמן אמת.",
+               "medium": "מומלץ לסגור חלונות בערב ולהכין מטהר.", "high": "מומלץ לסגור חלונות בערב ולהכין מטהר."}
+        win = f" בין {n['window'][0]} ל-{n['window'][1]}" if n["window"] and n["level"] in ("medium", "high") else ""
+        if s.get("forecast_sent") != n["night"]:
+            notify.send(f"{icon[n['level']]} תחזית הלילה בהדרים: {n['label']}{win} "
+                        f"({n['agree'][0]} מתוך {n['agree'][1]} מודלי מזג אוויר מסכימים). {tip[n['level']]}")
+            s["forecast_sent"] = n["night"]
+            official[n["night"]] = {"level": n["level"], "prob": n["prob"], "window": n["window"],
+                                    "issued": now.strftime("%H:%M")}
+        elif n.get("changed") and s.get("update_sent") != n["night"]:
+            notify.send(f"{icon[n['level']]} עדכון לתחזית הלילה בהדרים: {n['label']}{win}. {tip[n['level']]}")
+            s["update_sent"] = n["night"]
+            official[n["night"]] = {"level": n["level"], "prob": n["prob"], "window": n["window"],
+                                    "issued": now.strftime("%H:%M")}
+    s["official"] = {k: v for k, v in official.items() if k >= str(today.date())}
+    STATE.write_text(json.dumps(s, ensure_ascii=False))
 
 
 def cmd_train():

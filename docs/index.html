@@ -47,6 +47,11 @@
   .tn { font-size:12px; color:var(--mute); } .tv { font-size:22px; font-weight:700; margin:2px 0; } .tu { font-size:11px; font-weight:400; color:var(--mute); }
   .ta { font-size:16px; color:var(--mute); } .tnote { font-size:11.5px; color:var(--mute); line-height:1.4; }
   .tile.wind { grid-column:1 / -1; }
+  .uncertain { background:#c99a1e; }
+  .night.early { opacity:.8; }
+  details.models { margin-top:10px; font-size:13px; } details.models summary { cursor:pointer; color:var(--mute); }
+  .mrow { display:grid; grid-template-columns:110px 1fr 40px; gap:8px; align-items:center; margin:5px 0; }
+  .mbar { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; } .mbar i { display:block; height:100%; background:var(--orange); }
   .keys { display:flex; gap:14px; font-size:12px; color:var(--mute); margin-top:6px; flex-wrap:wrap; }
   .keys i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-left:4px; vertical-align:-1px; }
   .legend { font-size:12px; color:var(--mute); margin-top:6px; }
@@ -84,6 +89,7 @@
   </div>
 
   <div class="card"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
+    <details class="models" id="models"></details>
     <div class="legend" id="fbasis"></div>
     <div class="legend" id="fupd"></div></div>
 
@@ -151,16 +157,28 @@ function renderNow() {
 }
 function renderNights() {
   const F = FC; if (!F) return; const h = HOOD(), had = isHadarim(h);
+  const pct = x => Math.round(x * 100) + "%";
   document.getElementById("nights").innerHTML = F.nights.slice(0, 2).map(n => {
     const v = had || !n.rest ? n : n.rest;
-    const win = had && n.level !== "low" && n.window ? "צפי " + n.window[0] + "–" + n.window[1] + " · " : "";
-    const other = had || !n.rest ? "" : `<div class="r">בהדרים: ${n.label} (${Math.round(n.prob * 100)}%)</div>`;
-    return `<div class="night ${v.level}"><div class="t">${dayName(n.night)}</div><div class="l">${v.label}</div>
-      <div class="t">${win}${Math.round(v.prob * 100)}%</div>${other}</div>`; }).join("");
-  document.getElementById("fbasis").innerHTML = had
-    ? "התחזית מבוססת על ניידת הדרים (בנזן) ועל תחזית רוח. בבדיקה על החורף שעבר היא זיהתה 72% מהלילות המזוהמים."
-    : `התחזית ל${h} נגזרת מהתחזית של הדרים ומההיסטוריה של התחנה הקבועה במרכז-צפון: בלילות שבהם הדרים הייתה מזוהמת, במרכז-צפון היה עשן ב-33% מהמקרים. כשהדרים הייתה נקייה, ב-13% בלבד. זו הערכה גסה, והדיווחים שלכם ישפרו אותה.`;
-  document.getElementById("fupd").textContent = "עודכן " + new Date(F.updated).toLocaleString("he-IL");
+    const win = had && (n.level === "medium" || n.level === "high") && n.window && !n.early ? "צפי " + n.window[0] + "–" + n.window[1] : "";
+    let sub;
+    if (n.early) sub = "מבט מוקדם · יתעדכן מחר";
+    else if (n.level === "uncertain") sub = "המודלים חלוקים";
+    else sub = n.agree ? `${n.agree[0]} מתוך ${n.agree[1]} מודלים מסכימים` : pct(v.prob);
+    const stamp = n.changed ? `<div class="r">⚠ עודכן ב-${n.changed.at} (היה: ${({high:"סיכון גבוה",medium:"סיכון",low:"צפוי נקי",uncertain:"לא ודאי"})[n.changed.from]})</div>`
+      : n.official ? `<div class="r">תחזית רשמית מ-${n.official.issued}</div>` : "";
+    const other = had || !n.rest ? "" : `<div class="r">בהדרים: ${n.label}</div>`;
+    return `<div class="night ${v.level}${n.early ? " early" : ""}"><div class="t">${dayName(n.night)}</div><div class="l">${v.label}</div>
+      <div class="t">${win ? win + " · " : ""}${sub}</div>${stamp}${other}</div>`; }).join("");
+  const n0 = F.nights[0];
+  document.getElementById("models").innerHTML = n0 && n0.models ? `<summary>מה אומר כל מודל להלילה?</summary>` +
+    Object.entries(n0.models).map(([m, p]) => `<div class="mrow"><span>${m}</span><span class="mbar"><i style="width:${Math.round(p*100)}%"></i></span><b>${pct(p)}</b></div>`).join("") +
+    `<div class="legend">סיכוי ללילה מזוהם (3 שעות ומעלה עם בנזן מעל 3) לפי תחזית הרוח של כל מודל.</div>` : "";
+  document.getElementById("fbasis").innerHTML = (had
+    ? "התחזית משקללת 5 מודלי מזג אוויר (אירופי, גרמני, אמריקאי, צרפתי ובריטי) ומבוססת על הנתונים של ניידת הדרים. בבדיקה על החורף שעבר היא זיהתה 72% מהלילות המזוהמים."
+    : `התחזית ל${h} נגזרת מהתחזית של הדרים ומההיסטוריה של התחנה הקבועה במרכז-צפון: בלילות שבהם הדרים הייתה מזוהמת, במרכז-צפון היה עשן ב-33% מהמקרים. כשהדרים הייתה נקייה, ב-13% בלבד. זו הערכה גסה, והדיווחים שלכם ישפרו אותה.`) +
+    "<br><b>איך להשתמש:</b> התחזית הרשמית יוצאת ב-15:00 ונשארת קבועה, אלא אם המודלים השתנו משמעותית. היא אומרת אם להתכונן. ההתראה בזמן אמת מהניידת אומרת אם העשן באמת הגיע.";
+  document.getElementById("fupd").textContent = "חושב לאחרונה " + new Date(F.updated).toLocaleString("he-IL");
 }
 function renderAll() { renderBasis(); renderNow(); renderNights(); }
 
