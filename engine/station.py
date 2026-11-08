@@ -44,8 +44,8 @@ def update_archive(days_back: int = 2) -> pd.DataFrame:
     """Append the latest hourly values to data/station.csv and return the full archive."""
     path = DATA / "station.csv"
     old = pd.read_csv(path, index_col=0, parse_dates=True) if path.exists() else pd.DataFrame()
-    new = fetch(days_back, 60)
-    allx = pd.concat([old, new])
-    allx = allx[~allx.index.duplicated(keep="last")].sort_index()
+    new = fetch(days_back, 60).dropna(how="all")  # API pads the rest of today with empty hours
+    allx = new.combine_first(old) if not old.empty else new  # fresh values win, gaps keep old ones
+    allx = allx.dropna(how="all").sort_index()
     allx.to_csv(path)
     return allx
