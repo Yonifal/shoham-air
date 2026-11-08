@@ -1,0 +1,40 @@
+name: watchdog loop
+# Fallback for when GitHub's cron scheduler is late or silent: one job runs the live check every
+# 15 minutes and the forecast every hour for ~5.5 hours, then starts the next job itself.
+# Free on public repositories. Stop it from the Actions tab (Disable workflow) if no longer needed.
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency: { group: watchdog, cancel-in-progress: false }
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: loop
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          WA_TOKEN: ${{ secrets.WA_TOKEN }}
+          WA_PHONE_ID: ${{ secrets.WA_PHONE_ID }}
+          WA_RECIPIENTS: ${{ secrets.WA_RECIPIENTS }}
+        run: |
+          git config user.name "shoham-air-bot"; git config user.email "bot@users.noreply.github.com"
+          save() { git add data docs/data; git diff --cached --quiet || git commit -qm "$1"; git pull -q --rebase && git push -q || true; }
+          for i in $(seq 1 21); do
+            git pull -q --rebase || true
+            python -m engine.run live || echo "live failed"
+            if [ $((i % 4)) -eq 1 ]; then python -m engine.run forecast || echo "forecast failed"; fi
+            save "watchdog update"
+            sleep 900
+          done
+      - name: start next round
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh workflow run watchdog.yml -R ${{ github.repository }} --ref main

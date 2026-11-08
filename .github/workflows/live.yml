@@ -1,7 +1,7 @@
 name: live station check
 on:
   schedule:
-    - cron: "*/15 * * * *"   # every 15 min (GitHub may delay a few minutes)
+    - cron: "7,22,37,52 * * * *"   # every 15 min, off the busy :00/:15 marks
   workflow_dispatch:
 permissions:
   contents: write
