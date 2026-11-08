@@ -64,7 +64,18 @@ def cmd_live():
                      "time": str(nr.index[-1] + pd.Timedelta(minutes=5))}
     except Exception as e:
         print("north station failed:", e)
+    # every pollutant the unit measures: last 15 min vs the 15 min an hour earlier (for the trend arrow)
+    metrics = {}
+    for k in ["Benzene", "Toluene", "PM2.5", "PM10", "NO2", "O3"]:
+        if k in raw:
+            v = raw[k].dropna()
+            if len(v):
+                cur = float(v.tail(3).mean())
+                ago = v[(v.index <= v.index[-1] - pd.Timedelta(minutes=55)) &
+                        (v.index > v.index[-1] - pd.Timedelta(minutes=75))]
+                metrics[k] = {"v": round(cur, 2), "prev": None if ago.empty else round(float(ago.mean()), 2)}
     _save("live.json", {
+        "metrics": metrics,
         "north": north,
         "reports": rep_summary,
         "station": STATION_NAME, "time": str(raw.index[-1] + pd.Timedelta(minutes=5)),

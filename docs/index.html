@@ -41,6 +41,12 @@
   .night .r { font-size:12px; opacity:.85; }
   .disclaimer { margin-top:18px; padding:14px 16px; border-radius:14px; background:var(--card); border:1px dashed var(--grid); font-size:12.5px; line-height:1.6; color:var(--mute); text-align:center; }
   .disclaimer b { color:var(--ink); }
+  .metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .tile { border-radius:12px; padding:10px 12px; background:var(--bg); border-right:4px solid var(--grid); }
+  .tile.ok { border-right-color:var(--green); } .tile.warn { border-right-color:var(--orange); } .tile.heavy { border-right-color:var(--red); }
+  .tn { font-size:12px; color:var(--mute); } .tv { font-size:22px; font-weight:700; margin:2px 0; } .tu { font-size:11px; font-weight:400; color:var(--mute); }
+  .ta { font-size:16px; color:var(--mute); } .tnote { font-size:11.5px; color:var(--mute); line-height:1.4; }
+  .tile.wind { grid-column:1 / -1; }
   .keys { display:flex; gap:14px; font-size:12px; color:var(--mute); margin-top:6px; flex-wrap:wrap; }
   .keys i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-left:4px; vertical-align:-1px; }
   .legend { font-size:12px; color:var(--mute); margin-top:6px; }
@@ -60,6 +66,11 @@
 
   <div class="card now" id="now"><div class="dot" style="background:#ccc"></div><div><div class="big">טוען…</div></div></div>
 
+
+  <div class="card"><h2>מדדים בזמן אמת: ניידת הדרים</h2>
+    <div class="metrics" id="metrics"><div class="tile wind" id="windtile"><div class="tn">רוח עכשיו</div><div class="tv">…</div></div></div>
+    <div class="legend" id="mage"></div>
+    <div class="legend">החץ ליד כל ערך: מגמה לעומת לפני שעה. ממוצע של 15 הדקות האחרונות. נתונים לא מבוקרים מהמשרד להגנת הסביבה.</div></div>
 
   <div class="card" id="report">
     <h2>מריחים עשן עכשיו?</h2>
@@ -153,15 +164,64 @@ function renderNights() {
 }
 function renderAll() { renderBasis(); renderNow(); renderNights(); }
 
-fetch("data/live.json?"+Date.now()).then(r=>r.json()).then(L=>{
-  LIVE = L; renderNow();
-  drawChart(L.last48, "bz");
-  showReports(L.reports);
-  document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
-    document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
-    drawChart(L.last48, b.dataset.k);
-  });
-}).catch(()=>{ document.querySelector("#now .big").textContent="אין נתונים מהניידת כרגע"; });
+let TAB = "bz";
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  TAB = b.dataset.k; if (LIVE) drawChart(LIVE.last48, TAB);
+});
+function loadLive() {
+  fetch("data/live.json?" + Date.now()).then(r => r.json()).then(L => {
+    LIVE = L; renderNow(); renderMetrics(); drawChart(L.last48, TAB); showReports(L.reports);
+  }).catch(() => { document.querySelector("#now .big").textContent = "אין נתונים מהניידת כרגע"; });
+}
+loadLive(); loadWind();
+setInterval(() => { loadLive(); loadWind(); }, 5 * 60e3);   // refresh without reloading the page
+setInterval(renderAge, 30e3);
+
+// ---- real-time metrics (Hadarim unit) ----
+const MET = [  // key, label, warn, heavy (µg/m³, hourly-scale display thresholds), note
+  ["Benzene", "בנזן", 3, 8, "הסימן המובהק לשריפת פלסטיק"],
+  ["PM2.5", "PM2.5", 35, 75, "חלקיקים עדינים"],
+  ["PM10", "PM10", 75, 150, "חלקיקים גסים, גם אבק"],
+  ["Toluene", "טולואן", null, null, "מלווה בנזן בשריפות"],
+  ["NO2", "NO₂", 100, 200, "תחמוצות חנקן, בעיקר תחבורה"],
+  ["O3", "אוזון", 120, 180, "גבוה בצהריים, לא קשור לשריפות"],
+];
+function renderMetrics() {
+  const M = (LIVE && LIVE.metrics) || {};
+  document.getElementById("metrics").innerHTML = MET.filter(([k]) => M[k]).map(([k, name, w, h, note]) => {
+    const { v, prev } = M[k];
+    const lvl = w == null ? "" : v >= h ? "heavy" : v >= w ? "warn" : "ok";
+    const d = prev == null ? 0 : v - prev, rel = prev ? Math.abs(d) / Math.max(prev, 0.5) : 0;
+    const arrow = rel < 0.15 ? "→" : d > 0 ? "↑" : "↓";
+    return `<div class="tile ${lvl}"><div class="tn">${name}</div><div class="tv">${v < 10 ? v.toFixed(1) : Math.round(v)}<span class="tu"> µg/m³</span> <span class="ta" title="לעומת לפני שעה">${arrow}</span></div><div class="tnote">${note}</div></div>`;
+  }).join("") + document.getElementById("windtile").outerHTML;
+  renderAge();
+}
+function renderAge() {
+  if (!LIVE) return;
+  const mins = Math.round((Date.now() - new Date(LIVE.time.replace(" ", "T") + "+02:00")) / 60e3);
+  document.getElementById("mage").textContent = `מדידה אחרונה מהניידת: לפני ${mins < 1 ? "פחות מדקה" : mins + " דק'"} · מתעדכן אוטומטית`;
+}
+
+// ---- wind right now (Open-Meteo, straight from the browser) ----
+const SRC_FROM = [75, 170];  // wind FROM this sector carries smoke from Na'alin/Budrus/Shuqba
+function loadWind() {
+  fetch("https://api.open-meteo.com/v1/forecast?latitude=31.995&longitude=34.955&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=boundary_layer_height&forecast_days=1&timezone=Asia%2FJerusalem")
+    .then(r => r.json()).then(W => {
+      const c = W.current, dir = c.wind_direction_10m, kmh = Math.round(c.wind_speed_10m);
+      const hi = W.hourly.time.findIndex(t => t >= c.time.slice(0, 13)); const blh = W.hourly.boundary_layer_height[Math.max(0, hi)];
+      const fromSrc = dir >= SRC_FROM[0] && dir <= SRC_FROM[1];
+      const names = ["צפון", "צפון-מזרח", "מזרח", "דרום-מזרח", "דרום", "דרום-מערב", "מערב", "צפון-מערב"];
+      const dname = names[Math.round(dir / 45) % 8];
+      const risky = fromSrc && c.wind_speed_10m <= 15 && blh < 200;
+      const t = document.getElementById("windtile");
+      t.className = "tile wind " + (risky ? "warn" : fromSrc ? "" : "ok");
+      t.innerHTML = `<div class="tn">רוח עכשיו</div>
+        <div class="tv"><svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-4px;transform:rotate(${dir + 180}deg)"><path d="M12 2 L17 20 L12 16 L7 20 Z" fill="currentColor"/></svg> ${kmh}<span class="tu"> קמ"ש</span></div>
+        <div class="tnote">מ${dname} · שכבת ערבוב ${Math.round(blh)} מ'<br>${fromSrc ? (risky ? "<b>נושבת מכיוון אתרי השריפה, ותנאים כולאים</b>" : "נושבת מכיוון אתרי השריפה") : "לא מכיוון אתרי השריפה"}</div>`;
+    }).catch(() => {});
+}
 
 // Hourly bars coloured by level, night hours shaded, tap/hover for exact value
 const SPEC = {
