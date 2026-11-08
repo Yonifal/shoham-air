@@ -1,0 +1,7 @@
+pandas>=2.2
+numpy
+scikit-learn>=1.4
+joblib
+requests
+aiohttp
+air-sviva-api>=0.0.4

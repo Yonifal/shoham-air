@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>אוויר בהדרים</title>
+<style>
+  :root { --bg:#f6f5f1; --card:#fff; --ink:#1d2321; --mute:#6b7370; --green:#2e8b57; --orange:#e08a1e; --red:#c8392f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141716; --card:#1e2220; --ink:#eef1ef; --mute:#9aa39f; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:560px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:22px; margin:4px 0 2px; } .sub { color:var(--mute); font-size:13px; margin-bottom:18px; }
+  .card { background:var(--card); border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .now { display:flex; align-items:center; gap:14px; }
+  .dot { width:46px; height:46px; border-radius:50%; flex:none; }
+  .big { font-size:20px; font-weight:700; } .mute { color:var(--mute); font-size:13px; }
+  .nights { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .night { border-radius:12px; padding:12px; color:#fff; }
+  .night .t { font-size:13px; opacity:.9; } .night .l { font-size:18px; font-weight:700; margin:4px 0; }
+  .low { background:var(--green); } .medium { background:var(--orange); } .high { background:var(--red); }
+  h2 { font-size:15px; margin:0 0 10px; }
+  svg { width:100%; height:120px; display:block; }
+  .legend { font-size:12px; color:var(--mute); margin-top:6px; }
+  details { font-size:14px; line-height:1.55; } summary { cursor:pointer; font-weight:600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>אוויר בהדרים</h1>
+  <div class="sub">תחזית עשן והתראות לשכונת הדרים, שוהם · מבוסס על ניידת הניטור של המשרד להגנת הסביבה ותחזית רוח</div>
+
+  <div class="card now" id="now"><div class="dot" style="background:#ccc"></div><div><div class="big">טוען…</div></div></div>
+
+  <div class="card"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
+    <div class="legend" id="fupd"></div></div>
+
+  <div class="card"><h2>בנזן ב-48 השעות האחרונות</h2><svg id="chart" viewBox="0 0 500 120" preserveAspectRatio="none"></svg>
+    <div class="legend">הקו המקווקו: 3 מק"ג/מ"ק, הסף שמעליו נחשב עשן</div></div>
+
+  <div class="card"><details><summary>איך זה עובד?</summary>
+    <p>העשן מגיע להדרים כמעט רק כשהרוח נושבת ממזרח או מדרום-מזרח, חלשה, ומתחת לשכבת היפוך נמוכה. זה קורה בעיקר בלילה, עם שיא סביב 03:00.
+    המודל אומן על כל הנתונים של ניידת 5 מאז דצמבר 2025 ומשווה כל יום את תחזית הרוח לדפוסים האלה.</p>
+    <p>מזג האוויר קובע מתי עשן <b>יכול</b> להגיע. האם שורפים באותו לילה, את זה רק הניידת יודעת, ולכן יש גם התראה בזמן אמת.</p>
+    <p>"לילה צפוי נקי" הוא החיזוי האמין ביותר. "סיכון" אומר שהתנאים מתאימים לעשן.</p>
+  </details></div>
+</main>
+<script>
+const COL = { clean:"var(--green)", smoke:"var(--orange)", heavy:"var(--red)" };
+const TXT = { clean:"האוויר נקי עכשיו", smoke:"יש עשן עכשיו", heavy:"זיהום כבד עכשיו" };
+const hm = s => new Date(s.replace(" ","T")).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
+const dayName = d => { const t=new Date(); t.setHours(0,0,0,0); const x=new Date(d+"T00:00");
+  const diff=Math.round((x-t)/864e5); return diff===0?"הלילה":diff===1?"מחר בלילה":x.toLocaleDateString("he-IL",{weekday:"long"})+" בלילה"; };
+
+fetch("data/live.json?"+Date.now()).then(r=>r.json()).then(L=>{
+  document.getElementById("now").innerHTML =
+    `<div class="dot" style="background:${COL[L.status]}"></div><div><div class="big">${TXT[L.status]}</div>
+     <div class="mute">בנזן ${L.benzene} · PM2.5 ${L.pm25 ?? "—"} · מדידה ${hm(L.time)}</div></div>`;
+  const pts = L.last48.filter(p=>p.bz!==null); if(!pts.length) return;
+  const max = Math.max(6, ...pts.map(p=>p.bz)), n = L.last48.length;
+  const xy = L.last48.map((p,i)=>p.bz===null?null:[i/(n-1)*500, 115-p.bz/max*105]);
+  let d=""; xy.forEach((q,i)=>{ if(q) d += (d && xy[i-1] ? "L":"M")+q[0].toFixed(1)+","+q[1].toFixed(1); });
+  const y3 = 115-3/max*105;
+  document.getElementById("chart").innerHTML =
+    `<line x1="0" x2="500" y1="${y3}" y2="${y3}" stroke="var(--orange)" stroke-dasharray="4 4"/>
+     <path d="${d}" fill="none" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+}).catch(()=>{ document.querySelector("#now .big").textContent="אין נתונים מהניידת כרגע"; });
+
+fetch("data/forecast.json?"+Date.now()).then(r=>r.json()).then(F=>{
+  document.getElementById("nights").innerHTML = F.nights.slice(0,2).map(n=>
+    `<div class="night ${n.level}"><div class="t">${dayName(n.night)}</div><div class="l">${n.label}</div>
+     <div class="t">${n.level!=="low" && n.window ? "צפי "+n.window[0]+"–"+n.window[1]+" · " : ""}${Math.round(n.prob*100)}%</div></div>`).join("");
+  document.getElementById("fupd").textContent = "עודכן "+new Date(F.updated).toLocaleString("he-IL");
+});
+</script>
+</body>
+</html>
