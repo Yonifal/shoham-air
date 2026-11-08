@@ -11,7 +11,8 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from . import model, notify, reports, station, weather
-from .config import BENZENE_HEAVY, BENZENE_SMOKE, DATA, LEVELS, SITE_DATA, STATION_NAME
+from .config import (BENZENE_HEAVY, BENZENE_SMOKE, DATA, LEVELS, NORTH_STATION_ID, NORTH_STATION_NAME,
+                     SITE_DATA, STATION_NAME)
 
 STATE = DATA / "state.json"
 IL = timezone(timedelta(hours=2))
@@ -50,7 +51,16 @@ def cmd_live():
         reports.device_reliability(rep, st).round(2).to_csv(DATA / "device_reliability.csv")
     now_t = raw.index[-1] + pd.Timedelta(minutes=5)
     rep_by_hour = rep.time.dt.floor("h").value_counts() if not rep.empty else pd.Series(dtype=int)
+    north = None
+    try:
+        nr = station.fetch_raw(1, NORTH_STATION_ID).dropna(subset=["PM2.5"])
+        if len(nr) and nr.index[-1] >= raw.index[-1] - pd.Timedelta(hours=3):
+            north = {"name": NORTH_STATION_NAME, "pm25": round(float(nr["PM2.5"].tail(3).mean()), 1),
+                     "time": str(nr.index[-1] + pd.Timedelta(minutes=5))}
+    except Exception as e:
+        print("north station failed:", e)
     _save("live.json", {
+        "north": north,
         "reports": reports.recent_summary(rep, now_t),
         "station": STATION_NAME, "time": str(raw.index[-1] + pd.Timedelta(minutes=5)),
         "status": status, "benzene": round(bz, 2),

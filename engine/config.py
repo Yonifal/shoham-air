@@ -13,6 +13,10 @@ LAT, LON = 31.995, 34.955
 # The Ministry reports in fixed winter time (UTC+2) all year; we use the same clock everywhere.
 TZ = "Etc/GMT-2"
 
+# Permanent Ministry station in central/north Shoham (PM2.5 and PM10 only, no benzene)
+NORTH_STATION_ID = 598
+NORTH_STATION_NAME = "שוהם, תחנה קבועה (מרכז-צפון)"
+
 # Known burning areas east/south-east of Shoham (approximate)
 SOURCES = {
     "נעלין": (31.952, 35.020),

@@ -11,12 +11,12 @@ from .config import DATA, STATION_ID
 KEEP = ["Benzene", "Toluene", "PM2.5", "PM10", "NO2", "NOX", "NO", "O3"]
 
 
-async def _fetch(days_back: int, timebase: int) -> pd.DataFrame:
+async def _fetch(days_back: int, timebase: int, station_id: int = STATION_ID) -> pd.DataFrame:
     async with aiohttp.ClientSession() as s:
         c = SvivaAirClient(s)
         await c.generate_token()
         resp = await c.get_station_average(
-            STATION_ID, from_date=date.today() - timedelta(days=days_back),
+            station_id, from_date=date.today() - timedelta(days=days_back),
             to_date=date.today(), timebase=timebase)
     rows = []
     for p in resp.data or []:
@@ -36,10 +36,10 @@ async def _fetch(days_back: int, timebase: int) -> pd.DataFrame:
     return df.sort_index()
 
 
-def fetch_raw(days_back: int = 1) -> pd.DataFrame:
+def fetch_raw(days_back: int = 1, station_id: int = STATION_ID) -> pd.DataFrame:
     """5-minute readings (the API returns 5-min data regardless of the requested timebase).
     It also pads the rest of today with empty rows, which we drop."""
-    return asyncio.run(_fetch(days_back, 5)).dropna(how="all")
+    return asyncio.run(_fetch(days_back, 5, station_id)).dropna(how="all")
 
 
 def hourly(raw: pd.DataFrame) -> pd.DataFrame:
