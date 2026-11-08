@@ -16,6 +16,7 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m engine.run live
         env:
+          REPORTS_URL: ${{ secrets.REPORTS_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           WA_TOKEN: ${{ secrets.WA_TOKEN }}

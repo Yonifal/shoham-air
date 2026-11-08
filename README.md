@@ -26,3 +26,8 @@
 
 ## האתר
 Settings ← Pages ← Source: `main` / `docs`.
+
+## דיווחי תושבים ("מריחים עשן?")
+1. ליצור Google Sheet חדש, ואז Extensions ← Apps Script ← להדביק את `reports/Code.gs`.
+2. Deploy ← New deployment ← Web app ← Execute as: Me ← Who has access: **Anyone**.
+3. את כתובת ה-`/exec` לשים גם ב-`REPORTS_URL` שב-`docs/index.html` וגם ב-secret `REPORTS_URL`.

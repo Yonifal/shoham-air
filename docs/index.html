@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>אוויר בהדרים</title>
+<title>אוויר בשוהם</title>
 <style>
   :root { --bg:#f6f5f1; --card:#fff; --ink:#1d2321; --mute:#6b7370; --green:#2e8b57; --orange:#e08a1e; --red:#c8392f; }
   @media (prefers-color-scheme: dark) { :root { --bg:#141716; --card:#1e2220; --ink:#eef1ef; --mute:#9aa39f; } }
@@ -31,6 +31,11 @@
   svg { width:100%; height:auto; display:block; touch-action:pan-y; }
   svg text { font-size:11px; fill:var(--mute); font-family:inherit; }
   .tip { position:absolute; top:0; pointer-events:none; background:var(--ink); color:var(--card); font-size:12px; padding:5px 8px; border-radius:8px; white-space:nowrap; display:none; direction:rtl; transform:translateX(-50%); }
+  select { width:100%; padding:10px; border-radius:10px; border:1px solid var(--grid); background:var(--bg); color:var(--ink); font:inherit; margin:4px 0 10px; }
+  .lv { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .lv button { padding:12px 4px; border-radius:12px; border:1px solid var(--grid); background:var(--bg); color:var(--ink); font:inherit; font-size:14px; cursor:pointer; }
+  .lv button:disabled { opacity:.45; cursor:default; }
+  #repmsg { margin-top:8px; min-height:18px; }
   .keys { display:flex; gap:14px; font-size:12px; color:var(--mute); margin-top:6px; flex-wrap:wrap; }
   .keys i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-left:4px; vertical-align:-1px; }
   .legend { font-size:12px; color:var(--mute); margin-top:6px; }
@@ -39,10 +44,25 @@
 </head>
 <body>
 <main>
-  <h1>אוויר בהדרים</h1>
-  <div class="sub">תחזית עשן והתראות לשכונת הדרים, שוהם · מבוסס על ניידת הניטור של המשרד להגנת הסביבה ותחזית רוח</div>
+  <h1>אוויר בשוהם</h1>
+  <div class="sub">תחזית עשן, מצב בזמן אמת ודיווחי תושבים · ניידת הניטור של המשרד להגנת הסביבה (האתרוג, הדרים) ותחזית רוח</div>
 
   <div class="card now" id="now"><div class="dot" style="background:#ccc"></div><div><div class="big">טוען…</div></div></div>
+
+
+  <div class="card" id="report">
+    <h2>מריחים עשן עכשיו?</h2>
+    <div class="mute" style="margin-bottom:10px">הדיווחים מראים לנו לאן העשן מגיע בכל שוהם, גם רחוק מהניידת. אין צורך בפרטים אישיים.</div>
+    <label class="mute">השכונה שלי</label>
+    <select id="hood"><option value="">בחרו שכונה…</option>
+      <option>הדרים</option><option>יעלים</option><option>כרמים</option><option>טללים</option>
+      <option>סחלבים</option><option>חמניות</option><option>גבעולים</option><option>ברושים</option><option>אחר</option></select>
+    <div class="lv">
+      <button data-l="1">🟡 ריח קל</button><button data-l="2">🟠 ריח חזק</button><button data-l="3">🔴 קשה לנשום</button>
+    </div>
+    <div id="repmsg" class="mute"></div>
+    <div id="replist" class="legend"></div>
+  </div>
 
   <div class="card"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
     <div class="legend" id="fupd"></div></div>
@@ -52,7 +72,7 @@
       <div class="tabs"><button data-k="bz" class="on">בנזן</button><button data-k="pm">PM2.5</button></div></div>
     <div class="csum" id="csum"></div>
     <div class="cwrap"><svg id="chart" viewBox="0 0 520 210"></svg><div class="tip" id="tip"></div></div>
-    <div class="keys"><span><i style="background:var(--green)"></i>נקי</span><span><i style="background:var(--orange)"></i>עשן</span><span><i style="background:var(--red)"></i>כבד</span><span><i style="background:var(--night)"></i>לילה</span></div>
+    <div class="keys"><span><i style="background:var(--green)"></i>נקי</span><span><i style="background:var(--orange)"></i>עשן</span><span><i style="background:var(--red)"></i>כבד</span><span><i style="background:var(--night)"></i>לילה</span><span>▲ דיווחי תושבים</span></div>
     <div class="legend">גע או רחף מעל הגרף כדי לראות ערך לפי שעה</div></div>
 
   <div class="card"><details><summary>איך זה עובד?</summary>
@@ -60,6 +80,7 @@
     המודל אומן על כל הנתונים של ניידת 5 מאז דצמבר 2025 ומשווה כל יום את תחזית הרוח לדפוסים האלה.</p>
     <p>מזג האוויר קובע מתי עשן <b>יכול</b> להגיע. האם שורפים באותו לילה, את זה רק הניידת יודעת, ולכן יש גם התראה בזמן אמת.</p>
     <p>"לילה צפוי נקי" הוא החיזוי האמין ביותר. "סיכון" אומר שהתנאים מתאימים לעשן.</p>
+    <p><b>ומה עם שאר שוהם?</b> הניידת נמצאת בהדרים, שהיא נמוכה וקרובה למקור, ולכן העשן מגיע אליה הכי הרבה. לשכונות הצפוניות הוא מגיע בעיקר בלילות עם רוח מזרחית חזקה יותר. כדי ללמוד איפה בדיוק, אנחנו צריכים את הדיווחים שלכם.</p>
   </details></div>
 </main>
 <script>
@@ -74,6 +95,7 @@ fetch("data/live.json?"+Date.now()).then(r=>r.json()).then(L=>{
     `<div class="dot" style="background:${COL[L.status]}"></div><div><div class="big">${TXT[L.status]}</div>
      <div class="mute">בנזן ${L.benzene} · PM2.5 ${L.pm25 ?? "—"} · מדידה ${hm(L.time)}</div></div>`;
   drawChart(L.last48, "bz");
+  showReports(L.reports);
   document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
     document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
     drawChart(L.last48, b.dataset.k);
@@ -108,6 +130,7 @@ function drawChart(rows, k) {
   rows.forEach((r, i) => { const h = t[i].getHours(); if (h % 6) return;
     g += `<line x1="${x(i)}" x2="${x(i)}" y1="${T0 + ph}" y2="${T0 + ph + 4}" stroke="var(--mute)"/><text x="${x(i)}" y="${T0 + ph + 16}" text-anchor="middle">${String(h).padStart(2, "0")}:00</text>`;
     if (h === 0) g += `<text x="${x(i)}" y="${T0 + ph + 29}" text-anchor="middle" style="font-weight:600">${t[i].toLocaleDateString("he-IL", { weekday: "short", day: "numeric", month: "numeric" })}</text>`; });
+  rows.forEach((r, i) => { if (r.rep) g += `<path d="M${x(i) + bw / 2 - 4},${T0 + 10} l4,-7 l4,7z" fill="var(--ink)"/><text x="${x(i) + bw / 2}" y="${T0 + 21}" text-anchor="middle">${r.rep}</text>`; });
   g += `<line id="cur" y1="${T0}" y2="${T0 + ph}" stroke="var(--ink)" stroke-width="1" opacity="0"/>`;
   svg.innerHTML = g;
 
@@ -126,7 +149,7 @@ function drawChart(rows, k) {
     const i = Math.min(n - 1, Math.max(0, Math.floor((sx - L0) / bw))), v = vals[i];
     cur.setAttribute("x1", x(i) + bw / 2); cur.setAttribute("x2", x(i) + bw / 2); cur.setAttribute("opacity", ".5");
     tip.style.display = "block"; tip.style.left = ((x(i) + bw / 2) / W * 100) + "%";
-    tip.innerHTML = `${t[i].toLocaleDateString("he-IL", { weekday: "short" })} ${String(t[i].getHours()).padStart(2, "0")}:00 · ${S.name} <b>${v ?? "—"}</b>`; };
+    tip.innerHTML = `${t[i].toLocaleDateString("he-IL", { weekday: "short" })} ${String(t[i].getHours()).padStart(2, "0")}:00 · ${S.name} <b>${v ?? "—"}</b>${rows[i].rep ? " · " + rows[i].rep + " דיווחים" : ""}`; };
   svg.onpointermove = show; svg.onpointerdown = show;
   svg.onpointerleave = () => { tip.style.display = "none"; cur.setAttribute("opacity", "0"); };
 }
@@ -137,6 +160,34 @@ fetch("data/forecast.json?"+Date.now()).then(r=>r.json()).then(F=>{
      <div class="t">${n.level!=="low" && n.window ? "צפי "+n.window[0]+"–"+n.window[1]+" · " : ""}${Math.round(n.prob*100)}%</div></div>`).join("");
   document.getElementById("fupd").textContent = "עודכן "+new Date(F.updated).toLocaleString("he-IL");
 });
+
+// ---- residents' smoke reports ----
+const REPORTS_URL = "";   // Apps Script web-app URL (reports/Code.gs)
+(function () {
+  const sel = document.getElementById("hood"), msg = document.getElementById("repmsg");
+  const btns = document.querySelectorAll(".lv button");
+  const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+               set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+  sel.value = ls.get("hood") || "";
+  sel.onchange = () => ls.set("hood", sel.value);
+  if (!REPORTS_URL) { btns.forEach(b => b.disabled = true); msg.textContent = "הדיווחים ייפתחו בקרוב"; return; }
+  const last = +ls.get("lastReport") || 0;
+  const lock = () => { btns.forEach(b => b.disabled = true); msg.textContent = "תודה! אפשר לדווח שוב בעוד חצי שעה."; };
+  if (Date.now() - last < 30 * 60e3) lock();
+  btns.forEach(b => b.onclick = () => {
+    if (!sel.value) { msg.textContent = "בחרו שכונה קודם 🙂"; sel.focus(); return; }
+    btns.forEach(x => x.disabled = true); msg.textContent = "שולח…";
+    fetch(REPORTS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ hood: sel.value, level: +b.dataset.l }) })
+      .then(r => r.json()).then(j => { if (!j.ok) throw 0; ls.set("lastReport", Date.now()); lock(); })
+      .catch(() => { btns.forEach(x => x.disabled = false); msg.textContent = "השליחה נכשלה, נסו שוב."; });
+  });
+})();
+function showReports(R) {
+  const e = Object.entries(R || {}); if (!e.length) return;
+  document.getElementById("replist").innerHTML = "דיווחים ב-3 השעות האחרונות: " +
+    e.sort((a, b) => b[1].n - a[1].n).map(([h, v]) => `${h} <b>${v.n}</b>`).join(" · ");
+}
 </script>
 </body>
 </html>

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from . import model, notify, station, weather
+from . import model, notify, reports, station, weather
 from .config import BENZENE_HEAVY, BENZENE_SMOKE, DATA, LEVELS, SITE_DATA, STATION_NAME
 
 STATE = DATA / "state.json"
@@ -45,12 +45,17 @@ def cmd_live():
     partial = raw[raw.index >= cur_hour].mean(numeric_only=True)
     hist = pd.concat([hist, partial.to_frame(cur_hour).T])
     hist = hist.reindex(pd.date_range(cur_hour - pd.Timedelta(hours=47), cur_hour, freq="h"))
+    rep = reports.sync()
+    now_t = raw.index[-1] + pd.Timedelta(minutes=5)
+    rep_by_hour = rep.time.dt.floor("h").value_counts() if not rep.empty else pd.Series(dtype=int)
     _save("live.json", {
+        "reports": reports.recent_summary(rep, now_t),
         "station": STATION_NAME, "time": str(raw.index[-1] + pd.Timedelta(minutes=5)),
         "status": status, "benzene": round(bz, 2),
         "pm25": None if pd.isna(pm) else round(float(pm), 1),
         "last48": [{"t": str(t), "bz": None if pd.isna(r.Benzene) else round(float(r.Benzene), 2),
-                    "pm": None if pd.isna(r["PM2.5"]) else round(float(r["PM2.5"]), 1)}
+                    "pm": None if pd.isna(r["PM2.5"]) else round(float(r["PM2.5"]), 1),
+                    "rep": int(rep_by_hour.get(t, 0))}
                    for t, r in hist.iterrows()],
         "updated": datetime.now(IL).isoformat(timespec="minutes"),
     })
