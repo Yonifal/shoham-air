@@ -1,0 +1,12 @@
+id,name,active,mobile,lat,lon,monitors
+514,ניידת נשר – רמלה,True,False,31.91259,34.89581,PM10
+31,מודיעין,False,False,31.90824,35.00921,"NO,NOX,NO2,O3,PM10,WS,WD,GSR,Rain,RH,Temp,StWd,PM2.5"
+64,מודיעין,True,False,31.89295205,34.99531847,"SO2,WS,WD,O3,NOX,NO,NO2,PM10"
+367,בית חשמונאי,True,False,31.88952134,34.91520583,"SO2,WS,WD,O3,NOX,NO,NO2,Temp,RH,PM10,PM2.5"
+371,אור יהודה,True,False,32.02531036,34.85226183,"NO,NO2,NOX,O3,PM2.5,RH,Temp,Benzene,Toluene"
+465,אלעד,True,False,32.05352021,34.95562719,"PM10,WS,WD,PM2.5"
+559,"ניידת שוהם, שכונת יעלים, מרכז ספרא",True,True,31.997171,34.946537,"NO,NOX,NO2,PM2.5,Benzene,Toluene"
+598,שוהם,True,False,32.006618,34.951584,"PM2.5,PM10"
+632,אור יהודה-שכונת בית בפארק,True,False,32.0397647,34.8569625,"PM2.5,NO,NOX,NO2,Benzene,Toluene"
+26,רחוב יהודה המכבי,True,False,32.09380567,34.7909179,"NOX,NO,NO2,CO,PM2.5,Benzene,Toluene"
+567,ראש העין,True,False,32.07616,34.99064,"NO,NOX,NO2,O3,PM2.5,Benzene,Toluene,WS,WD"
