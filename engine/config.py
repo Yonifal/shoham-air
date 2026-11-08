@@ -38,3 +38,8 @@ WEATHER_VARS = [
     "wind_speed_10m", "wind_direction_10m", "boundary_layer_height",
     "precipitation", "temperature_2m", "relative_humidity_2m",
 ]
+
+# Residents' reports endpoint (Google Apps Script web app, see reports/Code.gs). Public by design.
+REPORTS_URL = "https://script.google.com/macros/s/AKfycbzHwwyeOOYUARlirW-TghWBI7UMS-7Agdvi8SZ_wCMEan_Exriqc5IOzJ2_GiGblkVUSQ/exec"
+CONFIRM_DEVICES = 3        # distinct devices in the same neighbourhood…
+CONFIRM_MINUTES = 30       # …within this window = a confirmed smoke event

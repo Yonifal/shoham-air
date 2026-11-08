@@ -162,7 +162,7 @@ fetch("data/forecast.json?"+Date.now()).then(r=>r.json()).then(F=>{
 });
 
 // ---- residents' smoke reports ----
-const REPORTS_URL = "";   // Apps Script web-app URL (reports/Code.gs)
+const REPORTS_URL = "https://script.google.com/macros/s/AKfycbzHwwyeOOYUARlirW-TghWBI7UMS-7Agdvi8SZ_wCMEan_Exriqc5IOzJ2_GiGblkVUSQ/exec";   // Apps Script web-app URL (reports/Code.gs)
 (function () {
   const sel = document.getElementById("hood"), msg = document.getElementById("repmsg");
   const btns = document.querySelectorAll(".lv button");
@@ -171,6 +171,8 @@ const REPORTS_URL = "";   // Apps Script web-app URL (reports/Code.gs)
   sel.value = ls.get("hood") || "";
   sel.onchange = () => ls.set("hood", sel.value);
   if (!REPORTS_URL) { btns.forEach(b => b.disabled = true); msg.textContent = "הדיווחים ייפתחו בקרוב"; return; }
+  // anonymous random device id: lets us weigh reports per device without any personal data
+  let dev = ls.get("dev"); if (!dev) { dev = Math.random().toString(36).slice(2, 10); ls.set("dev", dev); }
   const last = +ls.get("lastReport") || 0;
   const lock = () => { btns.forEach(b => b.disabled = true); msg.textContent = "תודה! אפשר לדווח שוב בעוד חצי שעה."; };
   if (Date.now() - last < 30 * 60e3) lock();
@@ -178,7 +180,7 @@ const REPORTS_URL = "";   // Apps Script web-app URL (reports/Code.gs)
     if (!sel.value) { msg.textContent = "בחרו שכונה קודם 🙂"; sel.focus(); return; }
     btns.forEach(x => x.disabled = true); msg.textContent = "שולח…";
     fetch(REPORTS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ hood: sel.value, level: +b.dataset.l }) })
+      body: JSON.stringify({ hood: sel.value, level: +b.dataset.l, note: "d:" + dev }) })
       .then(r => r.json()).then(j => { if (!j.ok) throw 0; ls.set("lastReport", Date.now()); lock(); })
       .catch(() => { btns.forEach(x => x.disabled = false); msg.textContent = "השליחה נכשלה, נסו שוב."; });
   });
@@ -186,7 +188,8 @@ const REPORTS_URL = "";   // Apps Script web-app URL (reports/Code.gs)
 function showReports(R) {
   const e = Object.entries(R || {}); if (!e.length) return;
   document.getElementById("replist").innerHTML = "דיווחים ב-3 השעות האחרונות: " +
-    e.sort((a, b) => b[1].n - a[1].n).map(([h, v]) => `${h} <b>${v.n}</b>`).join(" · ");
+    e.sort((a, b) => b[1].n - a[1].n).map(([h, v]) => `${h} <b>${v.n}</b>${v.confirmed ? " ✔" : ""}`).join(" · ") +
+    (e.some(([, v]) => v.confirmed) ? "<br>✔ = לפחות 3 מכשירים שונים דיווחו בחצי שעה" : "");
 }
 </script>
 </body>

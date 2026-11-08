@@ -46,6 +46,8 @@ def cmd_live():
     hist = pd.concat([hist, partial.to_frame(cur_hour).T])
     hist = hist.reindex(pd.date_range(cur_hour - pd.Timedelta(hours=47), cur_hour, freq="h"))
     rep = reports.sync()
+    if not rep.empty:
+        reports.device_reliability(rep, st).round(2).to_csv(DATA / "device_reliability.csv")
     now_t = raw.index[-1] + pd.Timedelta(minutes=5)
     rep_by_hour = rep.time.dt.floor("h").value_counts() if not rep.empty else pd.Series(dtype=int)
     _save("live.json", {
