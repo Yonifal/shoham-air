@@ -527,10 +527,11 @@ function buildShare() {
   let line2 = "";
   if (VER && VER.last && VER.last.night === nightStr) {
     const ic = { hit: "✅", false_alarm: "⚠️", miss: "❌", open: "🟡" }[VER.last.outcome];
-    line2 = `${ic} התחזית: ${VER.last.forecast_label} · ${VER.last.text}`;
+    const word = { hit: "צדקנו", false_alarm: "התרענו לשווא", miss: "פספסנו", open: "לא התחייבנו" }[VER.last.outcome];
+    line2 = `${ic} התחזית: ${VER.last.forecast_label} · ${word}`;
   }
   x.font = font(500, 34); x.fillStyle = "#1d2321";
-  if (line2) x.fillText(line2.slice(0, 48), W - 100, 860);
+  if (line2) x.fillText(line2, W - 100, 860);
   x.font = font(400, 28); x.fillStyle = "#6b7370";
   x.fillText("נתוני ניידת המשרד להגנת הסביבה · מיזם קהילתי", W - 100, 935);
   x.textAlign = "left"; x.fillStyle = "#2e8b57"; x.font = font(600, 30); x.fillText("yonifal.github.io/shoham-air", 100, 990);
