@@ -75,7 +75,7 @@
   <div class="card"><h2>מדדים בזמן אמת: ניידת הדרים</h2>
     <div class="metrics" id="metrics"><div class="tile wind" id="windtile"><div class="tn">רוח עכשיו</div><div class="tv">…</div></div></div>
     <div class="legend" id="mage"></div>
-    <div class="legend">החץ ליד כל ערך: מגמה לעומת לפני שעה. ממוצע של 15 הדקות האחרונות. נתונים לא מבוקרים מהמשרד להגנת הסביבה.</div></div>
+    <div class="legend">המספר הגדול: המדידה האחרונה, כמו באתר המשרד. החץ: מגמה לעומת לפני שעה. ההתראות מבוססות על ממוצע רבע השעה, כדי שקפיצה רגעית לא תקפיץ התראה. נתונים לא מבוקרים מהמשרד להגנת הסביבה.</div></div>
 
   <div class="card" id="report">
     <h2>מריחים עשן עכשיו?</h2>
@@ -223,11 +223,12 @@ const MET = [  // key, label, warn, heavy (µg/m³, hourly-scale display thresho
 function renderMetrics() {
   const M = (LIVE && LIVE.metrics) || {};
   document.getElementById("metrics").innerHTML = MET.filter(([k]) => M[k]).map(([k, name, w, h, note]) => {
-    const { v, prev } = M[k];
+    const { v, prev } = M[k], last = M[k].last ?? v;
+    const fmt = x => x.toLocaleString("en-US", { maximumFractionDigits: 2 });
     const lvl = w == null ? "" : v >= h ? "heavy" : v >= w ? "warn" : "ok";
     const d = prev == null ? 0 : v - prev, rel = prev ? Math.abs(d) / Math.max(prev, 0.5) : 0;
     const arrow = rel < 0.15 ? "→" : d > 0 ? "↑" : "↓";
-    return `<div class="tile ${lvl}"><div class="tn">${name}</div><div class="tv">${v.toLocaleString("en-US", { maximumFractionDigits: 2 })}<span class="tu"> µg/m³</span> <span class="ta" title="לעומת לפני שעה">${arrow}</span></div><div class="tnote">${note}</div></div>`;
+    return `<div class="tile ${lvl}"><div class="tn">${name}</div><div class="tv">${fmt(last)}<span class="tu"> µg/m³</span> <span class="ta" title="לעומת לפני שעה">${arrow}</span></div><div class="tnote">ממוצע רבע שעה: ${fmt(v)} · ${note}</div></div>`;
   }).join("") + document.getElementById("windtile").outerHTML;
   renderAge();
 }

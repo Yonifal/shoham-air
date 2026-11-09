@@ -73,7 +73,8 @@ def cmd_live():
                 cur = float(v.tail(3).mean())
                 ago = v[(v.index <= v.index[-1] - pd.Timedelta(minutes=55)) &
                         (v.index > v.index[-1] - pd.Timedelta(minutes=75))]
-                metrics[k] = {"v": round(cur, 2), "prev": None if ago.empty else round(float(ago.mean()), 2)}
+                metrics[k] = {"v": round(cur, 2), "last": round(float(v.iloc[-1]), 2),
+                              "prev": None if ago.empty else round(float(ago.mean()), 2)}
     _save("live.json", {
         "metrics": metrics,
         "north": north,
