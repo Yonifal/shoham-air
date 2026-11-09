@@ -193,8 +193,8 @@ function renderBasis() {
   const h = HOOD();
   document.getElementById("basis").innerHTML = isHadarim(h)
     ? "מדידה ישירה: ניידת המשרד להגנת הסביבה ברחוב האתרוג 60, שמודדת בנזן, הסימן המובהק לשריפת פלסטיק."
-    : `<b>אין מדידת בנזן ב${h}.</b> המצב מוערך לפי התחנה הקבועה במרכז-צפון שוהם (PM2.5 בלבד), לפי ניידת הדרים ולפי דיווחי תושבים. התחזית פחות מדויקת מזו של הדרים.`;
-  document.getElementById("rephood").innerHTML = h ? `מדווחים מ<b>${h}</b> (אפשר להחליף למעלה)` : "בחרו שכונה למעלה כדי לדווח";
+    : `<b>ב${h} אין תחנת מדידה.</b> מה שמוצג ל${h} הוא הערכה לפי התחנה הקבועה במרכז-צפון שוהם (PM2.5 בלבד), לפי ניידת הדרים, ולפי מה שתושבי ${h} מדווחים. ככל שיהיו יותר דיווחים מ${h}, ההערכה תהיה מדויקת יותר.`;
+  document.getElementById("rephood").innerHTML = h ? `מדווחים מ<b>${h}</b> (אפשר להחליף למעלה)` + (isHadarim(h) ? "" : `<br>ב${h} אין תחנת מדידה, כך שהדיווחים שלכם הם הדרך היחידה לדעת אם העשן מגיע ל${h}.`) : "בחרו שכונה למעלה כדי לדווח";
 }
 function renderNow() {
   const L = LIVE; if (!L) return; const h = HOOD();
@@ -211,12 +211,20 @@ function renderNow() {
     if (L.status === "clean" && pm != null && pm >= 15) lines.unshift(`PM2.5 ${pm}: מעל המלצת ארגון הבריאות העולמי (15)${pm >= 37.5 ? " ומעל התקן הישראלי (37.5)" : ", מתחת לתקן הישראלי (37.5)"}. "עשן" נקבע לפי בנזן.`);
   }
   else {
-    const rep = (L.reports || {})[h];
-    if (rep && rep.confirmed) { col = COL.smoke; txt = `תושבים ב${h} מדווחים על עשן`; }
-    else if (L.north && L.north.pm25 >= 35) { col = COL.smoke; txt = "ייתכן עשן עכשיו"; }
-    else if (L.status !== "clean") { col = "#d9a441"; txt = "יש עשן בהדרים, ייתכן שיגיע גם אליכם"; }
-    else { col = COL.clean; txt = "ככל הנראה נקי עכשיו"; }
-    lines = [northLine, hadarimLine + " (לייחוס)", rep ? `דיווחים מ${h} ב-3 השעות האחרונות: ${rep.n}` : `אין דיווחים מ${h} ב-3 השעות האחרונות`];
+    const rep = (L.reports || {})[h], wk = (L.reports_week || {})[h];
+    if (rep && rep.confirmed) { col = COL.smoke; txt = `תושבי ${h} מדווחים על עשן עכשיו`; }
+    else if (rep) { col = "#d9b33a"; txt = `יש דיווח על ריח עשן מ${h}`; }
+    else if (L.north && L.north.pm25 >= 35) { col = COL.smoke; txt = `ייתכן עשן עכשיו ב${h}`; }
+    else if (L.status !== "clean") { col = "#d9a441"; txt = `יש עשן בהדרים. ייתכן שיגיע גם ל${h}`; }
+    else { col = COL.clean; txt = `אין סימנים לעשן ב${h} כרגע`; }
+    const ago = t => { const m = Math.round((Date.now() - new Date(t.replace(" ", "T") + "+02:00")) / 60e3);
+      return m < 60 ? `לפני ${m} דק'` : m < 1440 ? `לפני ${Math.round(m / 60)} שעות` : `לפני ${Math.round(m / 1440)} ימים`; };
+    lines = [
+      rep ? `דיווחים מ${h} ב-3 השעות האחרונות: <b>${rep.n}</b> (מ-${rep.devices} מכשירים${rep.confirmed ? ", מאומת ✔" : ""})`
+          : `אין דיווחים מ${h} ב-3 השעות האחרונות`,
+      wk ? `השבוע: ${wk.n} דיווחים מ${h} · האחרון ${ago(wk.last)}`
+         : `עוד לא היו דיווחים מ${h} השבוע. מריחים עשן? הדיווח שלכם הוא המדידה היחידה מ${h}`,
+      northLine, hadarimLine + " (לייחוס)"];
   }
   document.getElementById("now").innerHTML = `<div class="dot" style="background:${col}"></div><div><div class="big">${txt}</div>` +
     lines.map(l => `<div class="mute">${l}</div>`).join("") + `</div>`;
@@ -233,7 +241,7 @@ function renderNights() {
     else sub = n.agree ? `${n.agree[0]} מתוך ${n.agree[1]} מודלים מסכימים` : pct(v.prob);
     const stamp = n.changed ? `<div class="r">⚠ עודכן ב-${n.changed.at} (היה: ${({high:"סיכון גבוה",medium:"סיכון",low:"צפוי נקי",uncertain:"לא ודאי"})[n.changed.from]})</div>`
       : n.official ? `<div class="r">תחזית רשמית מ-${n.official.issued}</div>` : "";
-    const other = had || !n.rest ? "" : `<div class="r">בהדרים: ${n.label}</div>`;
+    const other = had || !n.rest ? "" : `<div class="r">הערכה ל${h} · בהדרים: ${n.label}</div>`;
     return `<div class="night ${v.level}${n.early ? " early" : ""}"><div class="t">${dayName(n.night)}</div><div class="l">${v.label}</div>
       <div class="t">${win ? win + " · " : ""}${sub}</div>${stamp}${other}</div>`; }).join("");
   const n0 = F.nights[0];
@@ -242,7 +250,7 @@ function renderNights() {
     `<div class="legend">סיכוי ללילה מזוהם (3 שעות ומעלה עם בנזן מעל 3) לפי תחזית הרוח של כל מודל.</div>` : "";
   document.getElementById("fbasis").innerHTML = (had
     ? "התחזית משקללת 5 מודלי מזג אוויר (אירופי, גרמני, אמריקאי, צרפתי ובריטי) ומבוססת על הנתונים של ניידת הדרים. בבדיקה על החורף שעבר היא זיהתה 72% מהלילות המזוהמים."
-    : `התחזית ל${h} נגזרת מהתחזית של הדרים ומההיסטוריה של התחנה הקבועה במרכז-צפון: בלילות שבהם הדרים הייתה מזוהמת, במרכז-צפון היה עשן ב-33% מהמקרים. כשהדרים הייתה נקייה, ב-13% בלבד. זו הערכה גסה, והדיווחים שלכם ישפרו אותה.`) +
+    : `ל${h} אין תחזית משלה, כי אין בה מדידה. ההערכה נגזרת מהתחזית של הדרים ומההיסטוריה של התחנה הקבועה במרכז-צפון: בלילות שבהם הדרים הייתה מזוהמת, במרכז-צפון היה עשן ב-33% מהמקרים. כשהדרים הייתה נקייה, ב-13% בלבד. אחרי כמה שבועות של דיווחים מ${h}, נוכל לבנות ל${h} תחזית משלה.`) +
     "<br><b>איך להשתמש:</b> התחזית הרשמית יוצאת ב-15:00 ונשארת קבועה, אלא אם המודלים השתנו משמעותית. היא אומרת אם להתכונן. ההתראה בזמן אמת מהניידת אומרת אם העשן באמת הגיע.";
   document.getElementById("fupd").textContent = "חושב לאחרונה " + new Date(F.updated).toLocaleString("he-IL");
 }

@@ -53,9 +53,10 @@ def cmd_live():
             reports.device_reliability(rep, st).round(2).to_csv(DATA / "device_reliability.csv")
         rep_by_hour = rep.time.dt.floor("h").value_counts() if not rep.empty else pd.Series(dtype=int)
         rep_summary = reports.recent_summary(rep, now_t)
+        rep_week = reports.week_summary(rep, now_t)
     except Exception as e:
         print("reports failed:", e)
-        rep_by_hour, rep_summary = pd.Series(dtype=int), {}
+        rep_by_hour, rep_summary, rep_week = pd.Series(dtype=int), {}, {}
     north = None
     try:
         nr = station.fetch_raw(1, NORTH_STATION_ID).dropna(subset=["PM2.5"])
@@ -79,6 +80,7 @@ def cmd_live():
         "metrics": metrics,
         "north": north,
         "reports": rep_summary,
+        "reports_week": rep_week,
         "station": STATION_NAME, "time": str(raw.index[-1] + pd.Timedelta(minutes=5)),
         "status": status, "benzene": round(bz, 2),
         "pm25": None if pd.isna(pm) else round(float(pm), 1),

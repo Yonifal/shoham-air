@@ -73,3 +73,12 @@ def recent_summary(allr: pd.DataFrame, now: pd.Timestamp, hours: int = 3) -> dic
         out[hood] = {"n": int(len(g)), "devices": int(g.device.nunique()),
                      "max": int(g.level.max()), "confirmed": bool(confirmed)}
     return out
+
+
+def week_summary(allr: pd.DataFrame, now: pd.Timestamp, days: int = 7) -> dict:
+    """Per neighbourhood over the last week: number of reports, distinct devices, last report time."""
+    if allr.empty:
+        return {}
+    r = allr[allr.time >= now - pd.Timedelta(days=days)]
+    return {h: {"n": int(len(g)), "devices": int(g.device.nunique()),
+                "last": g.time.max().strftime("%Y-%m-%d %H:%M")} for h, g in r.groupby("hood")}
