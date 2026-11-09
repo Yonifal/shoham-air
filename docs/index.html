@@ -226,7 +226,7 @@ function renderNights() {
   const pct = x => Math.round(x * 100) + "%";
   document.getElementById("nights").innerHTML = F.nights.slice(0, 2).map(n => {
     const v = had || !n.rest ? n : n.rest;
-    const win = had && (n.level === "medium" || n.level === "high") && n.window && !n.early ? "צפי " + n.window[0] + "–" + n.window[1] : "";
+    const win = had && (n.level === "medium" || n.level === "high") && n.window && !n.early ? "בין " + n.window[0] + " ל-" + n.window[1] : "";
     let sub;
     if (n.early) sub = "מבט מוקדם · יתעדכן מחר";
     else if (n.level === "uncertain") sub = "המודלים חלוקים";
