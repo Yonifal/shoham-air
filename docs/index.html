@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>אוויר בשוהם</title>
 <style>
   :root { --bg:#f6f5f1; --card:#fff; --ink:#1d2321; --mute:#6b7370; --green:#2e8b57; --orange:#e08a1e; --red:#c8392f; }
@@ -67,6 +67,16 @@
   .trow .tl { flex:1; font-size:14px; }
   .trow a, .trow button { font:inherit; font-size:13px; padding:6px 10px; border-radius:10px; border:1px solid var(--grid); background:var(--bg); color:var(--ink); text-decoration:none; cursor:pointer; white-space:nowrap; }
   .trow a { background:var(--ink); color:var(--card); border-color:var(--ink); }
+  .hide-tab { display:none !important; }
+  main { padding-bottom:calc(84px + env(safe-area-inset-bottom)); }
+  .mini { text-align:center; font-size:12px; color:var(--mute); margin-top:6px; } .mini a { color:inherit; }
+  .tabbar { position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:center; background:var(--card);
+            border-top:1px solid var(--grid); padding:6px 4px calc(6px + env(safe-area-inset-bottom)); z-index:10;
+            box-shadow:0 -2px 10px rgba(0,0,0,.05); }
+  .tabbar a { flex:1; max-width:112px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 0;
+              font-size:11.5px; color:var(--mute); text-decoration:none; border-radius:10px; }
+  .tabbar a span { font-size:20px; line-height:1; filter:grayscale(1); opacity:.7; }
+  .tabbar a.on { color:var(--ink); font-weight:700; } .tabbar a.on span { filter:none; opacity:1; }
   .keys { display:flex; gap:14px; font-size:12px; color:var(--mute); margin-top:6px; flex-wrap:wrap; }
   .keys i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-left:4px; vertical-align:-1px; }
   .legend { font-size:12px; color:var(--mute); margin-top:6px; }
@@ -76,23 +86,23 @@
 <body>
 <main>
   <h1>אוויר בשוהם</h1>
-  <div class="sub">תחזית עשן, מצב בזמן אמת ודיווחי תושבים · ניידת הניטור של המשרד להגנת הסביבה (האתרוג, הדרים) ותחזית רוח</div>
+  <div class="sub" data-tab="info">תחזית עשן, מצב בזמן אמת ודיווחי תושבים · ניידת הניטור של המשרד להגנת הסביבה (האתרוג, הדרים) ותחזית רוח</div>
 
-  <div class="card hoodcard"><label for="hood">השכונה שלי</label>
+  <div class="card hoodcard" data-tab="now forecast report"><label for="hood">השכונה שלי</label>
     <select id="hood"><option value="">בחרו שכונה…</option>
       <option>הדרים</option><option>יעלים</option><option>כרמים</option><option>טללים</option>
       <option>סחלבים</option><option>חמניות</option><option>גבעולים</option><option>ברושים</option><option>אחר</option></select>
     <div class="legend" id="basis"></div></div>
 
-  <div class="card now" id="now"><div class="dot" style="background:#ccc"></div><div><div class="big">טוען…</div></div></div>
+  <div class="card now" id="now" data-tab="now"><div class="dot" style="background:#ccc"></div><div><div class="big">טוען…</div></div></div>
 
 
-  <div class="card"><h2>מדדים בזמן אמת: ניידת הדרים</h2>
+  <div class="card" data-tab="now"><h2>מדדים בזמן אמת: ניידת הדרים</h2>
     <div class="metrics" id="metrics"><div class="tile wind" id="windtile"><div class="tn">רוח עכשיו</div><div class="tv">…</div></div></div>
     <div class="legend" id="mage"></div>
     <div class="legend">המספר הגדול: המדידה האחרונה, כמו באתר המשרד. החץ: מגמה לעומת לפני שעה. ההתראות מבוססות על ממוצע רבע השעה, כדי שקפיצה רגעית לא תקפיץ התראה. נתונים לא מבוקרים מהמשרד להגנת הסביבה.</div></div>
 
-  <div class="card" id="alerts"><h2>🔔 התראות לטלפון</h2>
+  <div class="card" id="alerts" data-tab="alerts"><h2>🔔 התראות לטלפון</h2>
     <div class="mute" style="margin-bottom:12px">חינם, בלי הרשמה ובלי מספר טלפון. לוקח כ-2 דקות.</div>
 
     <div class="step"><div class="sn">1</div><div class="sb"><b>מתקינים את האפליקציה ntfy</b>
@@ -114,7 +124,7 @@
     <div class="legend">ההתראה נשלחת כשממוצע רבע השעה בניידת הדרים עובר את הסף, ושוב כשהערך יורד חזרה (אחרי חצי שעה מתחת לסף). בדיקה כל 10 דקות.</div>
   </div>
 
-  <div class="card" id="report">
+  <div class="card" id="report" data-tab="report">
     <h2>מריחים עשן עכשיו?</h2>
     <div class="mute" style="margin-bottom:10px">הדיווחים מראים לנו לאן העשן מגיע בכל שוהם, גם רחוק מהניידת. אין צורך בפרטים אישיים.</div>
     <div class="mute" id="rephood" style="margin-bottom:8px"></div>
@@ -125,15 +135,15 @@
     <div id="replist" class="legend"></div>
   </div>
 
-  <div class="card" id="verify" style="display:none"><h2>האם צדקנו אתמול?</h2>
+  <div class="card" id="verify" style="display:none" data-tab="forecast"><h2>האם צדקנו אתמול?</h2>
     <div id="vlast"></div><div class="legend" id="vstats"></div></div>
 
-  <div class="card"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
+  <div class="card" data-tab="forecast"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
     <details class="models" id="models"></details>
     <div class="legend" id="fbasis"></div>
     <div class="legend" id="fupd"></div></div>
 
-  <div class="card">
+  <div class="card" data-tab="now">
     <div class="chead"><h2>ניידת הדרים: 48 שעות</h2>
       <div class="tabs"><button data-k="bz" class="on">בנזן</button><button data-k="pm">PM2.5</button></div></div>
     <div class="csum" id="csum"></div>
@@ -141,7 +151,7 @@
     <div class="keys"><span><i style="background:var(--green)"></i>נקי</span><span><i style="background:#d9b33a"></i>בינוני</span><span><i style="background:var(--orange)"></i>עשן</span><span><i style="background:var(--red)"></i>כבד</span><span><i style="background:var(--night)"></i>לילה</span><span>▲ דיווחי תושבים</span></div>
     <div class="legend">גע או רחף מעל הגרף כדי לראות ערך לפי שעה</div></div>
 
-  <div class="card"><details><summary>איך זה עובד?</summary>
+  <div class="card" data-tab="info"><details open><summary>איך זה עובד?</summary>
     <p>העשן מגיע להדרים כמעט רק כשהרוח נושבת ממזרח או מדרום-מזרח, עד כ-11 קמ"ש (כולל בריזה שמרגישים בבירור), ומתחת לשכבת היפוך נמוכה. ברוח חזקה מזה העשן מתפזר בדרך. זה קורה בעיקר בלילה, עם שיא סביב 03:00.
     המודל אומן על כל הנתונים של ניידת 5 מאז דצמבר 2025 ומשווה כל יום את תחזית הרוח לדפוסים האלה.</p>
     <p>מזג האוויר קובע מתי עשן <b>יכול</b> להגיע. האם שורפים באותו לילה, את זה רק הניידת יודעת, ולכן יש גם התראה בזמן אמת.</p>
@@ -154,12 +164,20 @@
     </ul>
     <p>לכן הדיווחים שלכם מכל השכונות חשובים: הם ישלימו את מה שהתחנות לא מודדות.</p>
   </details></div>
-  <div class="disclaimer">
+  <div class="disclaimer" data-tab="info">
     <b>מיזם קהילתי התנדבותי, לא גוף רשמי.</b> המידע והתחזיות באתר הם הערכה בלבד ואינם תחליף להנחיות משרד הבריאות, המשרד להגנת הסביבה והרשויות.
     התחזית עשויה להשתנות ואינה מבטיחה אוויר נקי. הנתונים מגיעים ממקורות חיצוניים ועלולים להתעכב או להיות שגויים.
     אוכלוסיות רגישות (ילדים, הריון, מבוגרים, חולי לב וריאה) מתבקשות לפעול לפי ההנחיות הרשמיות.
   </div>
+  <div class="mini" data-tab="now forecast alerts report">מיזם קהילתי, לא גוף רשמי · <a href="#info">פרטים והסתייגויות</a></div>
 </main>
+<nav class="tabbar">
+  <a href="#now" data-go="now"><span>🌬️</span>עכשיו</a>
+  <a href="#forecast" data-go="forecast"><span>🌙</span>תחזית</a>
+  <a href="#alerts" data-go="alerts"><span>🔔</span>התראות</a>
+  <a href="#report" data-go="report"><span>👃</span>דיווח</a>
+  <a href="#info" data-go="info"><span>ℹ️</span>מידע</a>
+</nav>
 <script>
 const COL = { clean:"var(--green)", smoke:"var(--orange)", heavy:"var(--red)" };
 const TXT = { clean:"האוויר נקי עכשיו", smoke:"יש עשן עכשיו", heavy:"זיהום כבד עכשיו" };
@@ -431,6 +449,17 @@ function showReports(R) {
     e.sort((a, b) => b[1].n - a[1].n).map(([h, v]) => `${h} <b>${v.n}</b>${v.confirmed ? " ✔" : ""}`).join(" · ") +
     (e.some(([, v]) => v.confirmed) ? "<br>✔ = לפחות 3 מכשירים שונים דיווחו בחצי שעה" : "");
 }
+
+// ---- bottom tab navigation (hash routing: #now #forecast #alerts #report #info) ----
+const TABS = ["now", "forecast", "alerts", "report", "info"];
+function showTab() {
+  const t = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "now";
+  document.querySelectorAll("main [data-tab]").forEach(e => e.classList.toggle("hide-tab", !e.dataset.tab.split(" ").includes(t)));
+  document.querySelectorAll(".tabbar a").forEach(a => a.classList.toggle("on", a.dataset.go === t));
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", showTab);
+showTab();
 </script>
 </body>
 </html>
