@@ -52,8 +52,18 @@
   details.models { margin-top:10px; font-size:13px; } details.models summary { cursor:pointer; color:var(--mute); }
   .mrow { display:grid; grid-template-columns:110px 1fr 40px; gap:8px; align-items:center; margin:5px 0; }
   .mbar { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; } .mbar i { display:block; height:100%; background:var(--orange); }
-  .steps { margin:0 0 10px; padding-right:18px; font-size:14px; line-height:1.7; }
-  .trow { display:flex; align-items:center; gap:8px; padding:9px 0; border-top:1px solid var(--grid); }
+  .step { display:flex; gap:10px; margin-bottom:16px; }
+  .sn { flex:none; width:26px; height:26px; border-radius:50%; background:var(--ink); color:var(--card); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; margin-top:1px; }
+  .sb { flex:1; font-size:14px; line-height:1.6; }
+  .sbtn { display:flex; gap:8px; margin:6px 0; }
+  .sbtn a { flex:1; text-align:center; padding:9px; border-radius:10px; background:var(--bg); border:1px solid var(--grid); color:var(--ink); text-decoration:none; }
+  .tbox { display:flex; gap:6px; align-items:center; margin:6px 0; direction:ltr; }
+  .tbox code { flex:1; font-size:13px; padding:8px; background:var(--bg); border-radius:8px; user-select:all; overflow-wrap:anywhere; }
+  .cp { font:inherit; font-size:13px; padding:7px 10px; border-radius:8px; border:1px solid var(--grid); background:var(--card); color:var(--ink); cursor:pointer; }
+  button.big { width:100%; margin-top:8px; padding:11px; border-radius:12px; border:0; background:var(--green); color:#fff; font:inherit; font-weight:700; cursor:pointer; }
+  .how ol { margin:4px 0; padding-right:18px; }
+  .trow { padding:10px 0; border-top:1px solid var(--grid); }
+  .trow .tbox { margin:4px 0 0; }
   .trow .tl { flex:1; font-size:14px; }
   .trow a, .trow button { font:inherit; font-size:13px; padding:6px 10px; border-radius:10px; border:1px solid var(--grid); background:var(--bg); color:var(--ink); text-decoration:none; cursor:pointer; white-space:nowrap; }
   .trow a { background:var(--ink); color:var(--card); border-color:var(--ink); }
@@ -83,15 +93,25 @@
     <div class="legend">המספר הגדול: המדידה האחרונה, כמו באתר המשרד. החץ: מגמה לעומת לפני שעה. ההתראות מבוססות על ממוצע רבע השעה, כדי שקפיצה רגעית לא תקפיץ התראה. נתונים לא מבוקרים מהמשרד להגנת הסביבה.</div></div>
 
   <div class="card" id="alerts"><h2>🔔 התראות לטלפון</h2>
-    <div class="mute" style="margin-bottom:10px">חינם, בלי הרשמה ובלי מספר טלפון, דרך אפליקציית <b>ntfy</b>.</div>
-    <ol class="steps">
-      <li>מתקינים את ntfy:
-        <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank">אייפון</a> ·
-        <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank">אנדרואיד</a></li>
-      <li>בוחרים התראה ולוחצים <b>הרשמה</b>. באנדרואיד האפליקציה תיפתח לבד. באייפון: לוחצים <b>העתק</b>, ובאפליקציה <b>+</b> ← מדביקים ← Subscribe.</li>
-    </ol>
-    <div id="topics"></div>
-    <div class="legend">מקבלים הודעה כשהערך עובר את הסף (לפי ממוצע רבע שעה בניידת הדרים), והודעה כשהוא יורד חזרה. אפשר להירשם לכמה התראות.</div>
+    <div class="mute" style="margin-bottom:12px">חינם, בלי הרשמה ובלי מספר טלפון. לוקח כ-2 דקות.</div>
+
+    <div class="step"><div class="sn">1</div><div class="sb"><b>מתקינים את האפליקציה ntfy</b>
+      <div class="sbtn"><a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank">📱 אייפון</a>
+      <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank">🤖 אנדרואיד</a></div>
+      <div class="mute">פותחים אותה פעם אחת, וכשהיא שואלת אם לאפשר התראות, לוחצים <b>Allow</b>.</div></div></div>
+
+    <div class="step"><div class="sn">2</div><div class="sb"><b>בודקים שזה עובד</b>
+      <div class="mute">זה ערוץ בדיקה אישי, רק שלכם:</div>
+      <div class="tbox"><code id="mytest"></code><button class="cp" data-for="mytest">העתק</button></div>
+      <div class="mute how"></div>
+      <button id="sendtest" class="big">שלחו לי הודעת בדיקה</button>
+      <div id="testmsg" class="mute"></div></div></div>
+
+    <div class="step"><div class="sn">3</div><div class="sb"><b>נרשמים להתראות שרוצים</b>
+      <div class="mute">אותה פעולה כמו בשלב 2, לכל ערוץ שתרצו. אפשר כמה.</div>
+      <div id="topics"></div></div></div>
+
+    <div class="legend">ההתראה נשלחת כשממוצע רבע השעה בניידת הדרים עובר את הסף, ושוב כשהערך יורד חזרה (אחרי חצי שעה מתחת לסף). בדיקה כל 10 דקות.</div>
   </div>
 
   <div class="card" id="report">
@@ -220,18 +240,46 @@ function loadVerify() {
   }).catch(() => {});
 }
 loadVerify();
-fetch("data/ntfy.json?" + Date.now()).then(r => r.json()).then(T => {
-  const android = /android/i.test(navigator.userAgent);
-  document.getElementById("topics").innerHTML = T.map(t =>
-    `<div class="trow"><span class="tl">${t.label}</span>
-      <a href="${android ? "ntfy://ntfy.sh/" + t.topic : "https://ntfy.sh/" + t.topic}" target="_blank">הרשמה</a>
-      <button data-t="${t.topic}">העתק</button></div>`).join("");
-  document.querySelectorAll("#topics button").forEach(b => b.onclick = () => {
-    const done = () => { b.textContent = "הועתק ✓"; setTimeout(() => b.textContent = "העתק", 2000); };
-    (navigator.clipboard ? navigator.clipboard.writeText(b.dataset.t) : Promise.reject()).then(done)
-      .catch(() => { prompt("העתיקו את שם הערוץ:", b.dataset.t); });
-  });
-}).catch(() => {});
+// ---- ntfy phone alerts ----
+(function () {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), android = /android/i.test(navigator.userAgent);
+  const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+               set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+  const howTo = android
+    ? `<ol><li>לוחצים <b>הרשמה</b>, והאפליקציה נפתחת עם שם הערוץ.</li><li>לוחצים <b>SUBSCRIBE</b>.</li></ol><div>אם זה לא נפתח: <b>העתק</b>, ואז באפליקציה על ה-<b>+</b> למטה ← מדביקים ב-Topic name ← <b>SUBSCRIBE</b>.</div>`
+    : `<ol><li>לוחצים <b>העתק</b>.</li><li>באפליקציה לוחצים על ה-<b>+</b> למעלה בצד ימין.</li><li>מדביקים בשדה <b>Topic name</b> (לא נוגעים ב-Use another server).</li><li>לוחצים <b>Subscribe</b>.</li></ol>`;
+  document.querySelectorAll(".how").forEach(e => e.innerHTML = howTo);
+
+  let mine = ls.get("ntfyTest");
+  if (!mine) { mine = "shoham-air-test-" + Math.random().toString(36).slice(2, 9); ls.set("ntfyTest", mine); }
+  document.getElementById("mytest").textContent = mine;
+  if (android) document.getElementById("mytest").parentElement.insertAdjacentHTML("beforeend", `<a class="cp" href="ntfy://ntfy.sh/${mine}">הרשמה</a>`);
+
+  const copy = (txt, btn) => {
+    const done = () => { const o = btn.textContent; btn.textContent = "הועתק ✓"; setTimeout(() => btn.textContent = o, 1800); };
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(done).catch(() => prompt("העתיקו:", txt));
+  };
+  document.querySelector('.cp[data-for="mytest"]').onclick = e => copy(mine, e.target);
+
+  const tm = document.getElementById("testmsg");
+  document.getElementById("sendtest").onclick = e => {
+    e.target.disabled = true; tm.textContent = "שולח…";
+    fetch("https://ntfy.sh/", { method: "POST", body: JSON.stringify({ topic: mine, title: "אוויר בשוהם ✅",
+      message: "מעולה, ההתראות עובדות! עכשיו נרשמים להתראות שרוצים (שלב 3).", tags: ["tada"],
+      click: "https://yonifal.github.io/shoham-air/" }) })
+      .then(r => { if (!r.ok) throw 0; tm.innerHTML = "נשלח! אם ההודעה הופיעה בטלפון, הכל עובד ✅<br>לא הגיעה תוך דקה? ודאו שבשלב 2 נרשמתם בדיוק לשם הזה, ושבהגדרות הטלפון ההתראות של ntfy מופעלות."; })
+      .catch(() => { tm.textContent = "השליחה נכשלה, נסו שוב."; })
+      .finally(() => setTimeout(() => e.target.disabled = false, 5000));
+  };
+
+  fetch("data/ntfy.json?" + Date.now()).then(r => r.json()).then(T => {
+    document.getElementById("topics").innerHTML = T.map(t =>
+      `<div class="trow"><b>${t.label}</b>
+        <div class="tbox"><code>${t.topic}</code><button class="cp" data-t="${t.topic}">העתק</button>
+        ${android ? `<a class="cp" href="ntfy://ntfy.sh/${t.topic}">הרשמה</a>` : ""}</div></div>`).join("");
+    document.querySelectorAll("#topics .cp[data-t]").forEach(b => b.onclick = () => copy(b.dataset.t, b));
+  }).catch(() => {});
+})();
 function renderAll() { renderBasis(); renderNow(); renderNights(); }
 
 let TAB = "bz";
