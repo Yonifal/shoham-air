@@ -43,7 +43,7 @@
   .disclaimer b { color:var(--ink); }
   .metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .tile { border-radius:12px; padding:10px 12px; background:var(--bg); border-right:4px solid var(--grid); }
-  .tile.ok { border-right-color:var(--green); } .tile.warn { border-right-color:var(--orange); } .tile.heavy { border-right-color:var(--red); }
+  .tile.ok { border-right-color:var(--green); } .tile.mid { border-right-color:#d9b33a; } .tile.warn { border-right-color:var(--orange); } .tile.heavy { border-right-color:var(--red); }
   .tn { font-size:12px; color:var(--mute); } .tv { font-size:22px; font-weight:700; margin:2px 0; } .tu { font-size:11px; font-weight:400; color:var(--mute); }
   .ta { font-size:16px; color:var(--mute); } .tnote { font-size:11.5px; color:var(--mute); line-height:1.4; }
   .tile.wind { grid-column:1 / -1; }
@@ -101,7 +101,7 @@
       <div class="tabs"><button data-k="bz" class="on">בנזן</button><button data-k="pm">PM2.5</button></div></div>
     <div class="csum" id="csum"></div>
     <div class="cwrap"><svg id="chart" viewBox="0 0 520 210"></svg><div class="tip" id="tip"></div></div>
-    <div class="keys"><span><i style="background:var(--green)"></i>נקי</span><span><i style="background:var(--orange)"></i>עשן</span><span><i style="background:var(--red)"></i>כבד</span><span><i style="background:var(--night)"></i>לילה</span><span>▲ דיווחי תושבים</span></div>
+    <div class="keys"><span><i style="background:var(--green)"></i>נקי</span><span><i style="background:#d9b33a"></i>בינוני</span><span><i style="background:var(--orange)"></i>עשן</span><span><i style="background:var(--red)"></i>כבד</span><span><i style="background:var(--night)"></i>לילה</span><span>▲ דיווחי תושבים</span></div>
     <div class="legend">גע או רחף מעל הגרף כדי לראות ערך לפי שעה</div></div>
 
   <div class="card"><details><summary>איך זה עובד?</summary>
@@ -146,7 +146,15 @@ function renderNow() {
   const hadarimLine = `ניידת הדרים (האתרוג): בנזן ${L.benzene} · PM2.5 ${L.pm25 ?? "—"} · ${hm(L.time)}`;
   const northLine = L.north ? `תחנה קבועה מרכז-צפון: PM2.5 ${L.north.pm25} · ${hm(L.north.time)}` : "תחנה קבועה מרכז-צפון: אין נתונים עדכניים מהמשרד";
   let col, txt, lines;
-  if (isHadarim(h)) { col = COL[L.status]; txt = TXT[L.status]; lines = [hadarimLine, northLine]; }
+  if (isHadarim(h)) {
+    const pm = L.metrics && L.metrics["PM2.5"] ? (L.metrics["PM2.5"].last ?? L.metrics["PM2.5"].v) : L.pm25;
+    if (L.status !== "clean") { col = COL[L.status]; txt = TXT[L.status]; }
+    else if (pm != null && pm >= 37.5) { col = COL.smoke; txt = "אין סימני עשן משריפות, אבל איכות האוויר ירודה"; }
+    else if (pm != null && pm >= 15) { col = "#d9b33a"; txt = "אין סימני עשן משריפות · איכות אוויר בינונית"; }
+    else { col = COL.clean; txt = "האוויר נקי עכשיו"; }
+    lines = [hadarimLine, northLine];
+    if (L.status === "clean" && pm != null && pm >= 15) lines.unshift(`PM2.5 ${pm}: מעל המלצת ארגון הבריאות העולמי (15)${pm >= 37.5 ? " ומעל התקן הישראלי (37.5)" : ", מתחת לתקן הישראלי (37.5)"}. "עשן" נקבע לפי בנזן.`);
+  }
   else {
     const rep = (L.reports || {})[h];
     if (rep && rep.confirmed) { col = COL.smoke; txt = `תושבים ב${h} מדווחים על עשן`; }
@@ -212,20 +220,21 @@ setInterval(() => { loadLive(); loadWind(); }, 5 * 60e3);   // refresh without r
 setInterval(renderAge, 30e3);
 
 // ---- real-time metrics (Hadarim unit) ----
-const MET = [  // key, label, warn, heavy (µg/m³, hourly-scale display thresholds), note
-  ["Benzene", "בנזן", 3, 8, "הסימן המובהק לשריפת פלסטיק"],
-  ["PM2.5", "PM2.5", 35, 75, "חלקיקים עדינים"],
-  ["PM10", "PM10", 75, 150, "חלקיקים גסים, גם אבק"],
-  ["Toluene", "טולואן", null, null, "מלווה בנזן בשריפות"],
-  ["NO2", "NO₂", 100, 200, "תחמוצות חנקן, בעיקר תחבורה"],
-  ["O3", "אוזון", 120, 180, "גבוה בצהריים, לא קשור לשריפות"],
+// key, label, mid (WHO daily guideline), warn (Israeli daily environmental value), heavy, note
+const MET = [
+  ["Benzene", "בנזן", 1.5, 3, 8, "הסימן המובהק לשריפת פלסטיק"],
+  ["PM2.5", "PM2.5", 15, 37.5, 75, "חלקיקים עדינים · WHO: 15 · תקן ישראלי: 37.5"],
+  ["PM10", "PM10", 45, 130, 250, "חלקיקים גסים, גם אבק · WHO: 45 · תקן: 130"],
+  ["Toluene", "טולואן", null, null, null, "מלווה בנזן בשריפות"],
+  ["NO2", "NO₂", 25, 100, 200, "תחמוצות חנקן, בעיקר תחבורה · WHO: 25"],
+  ["O3", "אוזון", 100, 140, 180, "גבוה בצהריים, לא קשור לשריפות"],
 ];
 function renderMetrics() {
   const M = (LIVE && LIVE.metrics) || {};
-  document.getElementById("metrics").innerHTML = MET.filter(([k]) => M[k]).map(([k, name, w, h, note]) => {
+  document.getElementById("metrics").innerHTML = MET.filter(([k]) => M[k]).map(([k, name, mid, w, h, note]) => {
     const { v, prev } = M[k], last = M[k].last ?? v;
     const fmt = x => x.toLocaleString("en-US", { maximumFractionDigits: 2 });
-    const lvl = w == null ? "" : v >= h ? "heavy" : v >= w ? "warn" : "ok";
+    const lvl = w == null ? "" : last >= h ? "heavy" : last >= w ? "warn" : last >= mid ? "mid" : "ok";
     const d = prev == null ? 0 : v - prev, rel = prev ? Math.abs(d) / Math.max(prev, 0.5) : 0;
     const arrow = rel < 0.15 ? "→" : d > 0 ? "↑" : "↓";
     return `<div class="tile ${lvl}"><div class="tn">${name}</div><div class="tv">${fmt(last)}<span class="tu"> µg/m³</span> <span class="ta" title="לעומת לפני שעה">${arrow}</span></div><div class="tnote">ממוצע רבע שעה: ${fmt(v)} · ${note}</div></div>`;
