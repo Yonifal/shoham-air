@@ -91,7 +91,7 @@
   <div class="card hoodcard" data-tab="now forecast report"><label for="hood">השכונה שלי</label>
     <select id="hood"><option value="">בחרו שכונה…</option>
       <option>הדרים</option><option>יעלים</option><option>כרמים</option><option>טללים</option>
-      <option>סחלבים</option><option>חמניות</option><option>גבעולים</option><option>ברושים</option><option>אחר</option></select>
+      <option>סחלבים</option><option>חמניות</option><option>גבעולים</option><option>ברושים</option><option>יובלים</option><option>רקפות</option><option>אחר</option></select>
     <div class="legend" id="basis"></div></div>
 
   <div class="card now" id="now" data-tab="now"><div class="dot" style="background:#ccc"></div><div><div class="big">טוען…</div></div></div>
@@ -438,7 +438,7 @@ const REPORTS_URL = "https://script.google.com/macros/s/AKfycbzHwwyeOOYUARlirW-T
     if (!sel.value) { msg.textContent = "בחרו שכונה למעלה קודם 🙂"; sel.scrollIntoView({behavior:"smooth"}); sel.focus(); return; }
     btns.forEach(x => x.disabled = true); msg.textContent = "שולח…";
     fetch(REPORTS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ hood: sel.value, level: +b.dataset.l, note: "d:" + dev }) })
+      body: JSON.stringify({ hood: sel.value, level: +b.dataset.l, note: "d:" + dev + "|h:" + sel.value }) })
       .then(r => r.json()).then(j => { if (!j.ok) throw 0; ls.set("lastReport", Date.now()); lock(); })
       .catch(() => { btns.forEach(x => x.disabled = false); msg.textContent = "השליחה נכשלה, נסו שוב."; });
   });

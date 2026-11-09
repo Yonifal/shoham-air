@@ -35,6 +35,9 @@ def sync(days: int = 30) -> pd.DataFrame:
         return old
     new["time"] = pd.to_datetime(new.t, utc=True).dt.tz_convert("Etc/GMT-2").dt.tz_localize(None)
     new["device"] = new.note.astype(str).str.extract(r"d:([a-z0-9]+)", expand=False).fillna("unknown")
+    # neighbourhoods added after the Apps Script was deployed arrive as "אחר" with the real name in the note
+    h = new.note.astype(str).str.extract(r"h:([^|]+)", expand=False)
+    new["hood"] = h.where(h.notna() & (h != ""), new.hood)
     new = new[cols]
     allr = pd.concat([old, new])
     allr["time"] = pd.to_datetime(allr.time)
