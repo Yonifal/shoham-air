@@ -77,6 +77,9 @@
               font-size:11.5px; color:var(--mute); text-decoration:none; border-radius:10px; }
   .tabbar a span { font-size:20px; line-height:1; filter:grayscale(1); opacity:.7; }
   .tabbar a.on { color:var(--ink); font-weight:700; } .tabbar a.on span { filter:none; opacity:1; }
+  .seg { display:flex; background:var(--bg); border-radius:12px; padding:3px; margin-bottom:10px; }
+  .seg button { flex:1; border:0; background:transparent; padding:8px; border-radius:10px; font:inherit; font-size:14px; color:var(--mute); cursor:pointer; }
+  .seg button.on { background:var(--card); color:var(--ink); font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,.08); }
   .keys { display:flex; gap:14px; font-size:12px; color:var(--mute); margin-top:6px; flex-wrap:wrap; }
   .keys i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-left:4px; vertical-align:-1px; }
   .legend { font-size:12px; color:var(--mute); margin-top:6px; }
@@ -138,8 +141,13 @@
   <div class="card" id="verify" style="display:none" data-tab="forecast"><h2>האם צדקנו אתמול?</h2>
     <div id="vlast"></div><div class="legend" id="vstats"></div></div>
 
-  <div class="card" id="share" data-tab="forecast" style="display:none"><h2>📤 שתפו את הלילה שעבר</h2>
-    <div class="mute" style="margin-bottom:10px">כרטיס מוכן לוואטסאפ, עם נתוני הניידת מהלילה שעבר.</div>
+  <div class="card" data-tab="forecast"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
+    <details class="models" id="models"></details>
+    <div class="legend" id="fbasis"></div>
+    <div class="legend" id="fupd"></div></div>
+
+  <div class="card" id="share" data-tab="forecast" style="display:none"><h2>📤 שתפו בוואטסאפ</h2>
+    <div class="seg" id="sharetabs"><button data-k="fc" class="on">התחזית להלילה</button><button data-k="night">הלילה שעבר</button></div>
     <img id="shareimg" alt="כרטיס סיכום הלילה" style="width:100%;border-radius:12px;border:1px solid var(--grid)">
     <div style="display:flex;gap:8px;margin-top:10px">
       <button id="sharebtn" class="big" style="margin:0">שתפו בוואטסאפ</button>
@@ -147,10 +155,6 @@
     </div>
     <div id="sharemsg" class="mute"></div></div>
 
-  <div class="card" data-tab="forecast"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
-    <details class="models" id="models"></details>
-    <div class="legend" id="fbasis"></div>
-    <div class="legend" id="fupd"></div></div>
 
   <div class="card" data-tab="now">
     <div class="chead"><h2>ניידת הדרים: 48 שעות</h2>
@@ -433,7 +437,7 @@ function drawChart(rows, k) {
   svg.onpointerleave = () => { tip.style.display = "none"; cur.setAttribute("opacity", "0"); };
 }
 
-fetch("data/forecast.json?"+Date.now()).then(r=>r.json()).then(F=>{ FC = F; renderNights(); });
+fetch("data/forecast.json?"+Date.now()).then(r=>r.json()).then(F=>{ FC = F; renderNights(); buildShare(); });
 
 // ---- residents' smoke reports ----
 const REPORTS_URL = "https://script.google.com/macros/s/AKfycbzHwwyeOOYUARlirW-TghWBI7UMS-7Agdvi8SZ_wCMEan_Exriqc5IOzJ2_GiGblkVUSQ/exec";   // Apps Script web-app URL (reports/Code.gs)
@@ -490,11 +494,11 @@ function lastNight(rows) {
   const hrs = rows.map((r, i) => ({ t: t[i], v: r.bz })).filter(p => p.t >= start && p.t < end);
   return { start, hrs };
 }
-function buildShare() {
-  if (!LIVE || !LIVE.last48) return;
+function makeNightCard() {
+  if (!LIVE || !LIVE.last48) return null;
   const { start, hrs } = lastNight(LIVE.last48);
   const vals = hrs.filter(h => h.v !== null);
-  if (vals.length < 8) return;
+  if (vals.length < 8) return null;
   const smoke = vals.filter(h => h.v > 3).length, peak = vals.reduce((a, b) => b.v > a.v ? b : a);
   const W = 1080, H = 1080, c = document.createElement("canvas"); c.width = W; c.height = H;
   const x = c.getContext("2d"); x.direction = "rtl";
@@ -535,12 +539,61 @@ function buildShare() {
   x.font = font(400, 28); x.fillStyle = "#6b7370";
   x.fillText("נתוני ניידת המשרד להגנת הסביבה · מיזם קהילתי", W - 100, 935);
   x.textAlign = "left"; x.fillStyle = "#2e8b57"; x.font = font(600, 30); x.fillText("yonifal.github.io/shoham-air", 100, 990);
+  const text = (smoke ? `ליל אמש בהדרים: ${smoke} שעות עשן, שיא בנזן ${peak.v}.` : `ליל אמש בהדרים עבר נקי (שיא בנזן ${peak.v}).`) +
+    " תחזית עשן ומצב בזמן אמת: https://yonifal.github.io/shoham-air/";
+  return { canvas: c, text };
+}
+
+function makeForecastCard() {
+  if (!FC || !FC.nights || !FC.nights.length) return null;
+  const n = FC.nights[0], tm = FC.nights[1];
+  const W = 1080, H = 1080, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d"); x.direction = "rtl";
+  const font = (w, px) => `${w} ${px}px system-ui, -apple-system, "Segoe UI", Arial, sans-serif`;
+  const BG = { high: "#c8392f", medium: "#e08a1e", low: "#2e8b57", uncertain: "#c99a1e" };
+  x.fillStyle = "#f6f5f1"; x.fillRect(0, 0, W, H);
+  x.fillStyle = "#ffffff"; x.beginPath(); x.roundRect(50, 50, W - 100, H - 100, 40); x.fill();
+  x.textAlign = "right"; x.fillStyle = "#6b7370"; x.font = font(500, 34);
+  x.fillText("🌬️ אוויר בשוהם · הדרים", W - 100, 130);
+  x.textAlign = "left";
+  x.fillText(new Date(n.night + "T00:00").toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "numeric" }), 100, 130);
+  x.textAlign = "right"; x.fillStyle = "#1d2321"; x.font = font(700, 64); x.fillText("תחזית העשן להלילה", W - 100, 240);
+  // big level block
+  x.fillStyle = BG[n.level] || "#888"; x.beginPath(); x.roundRect(100, 290, W - 200, 290, 32); x.fill();
+  x.fillStyle = "#fff"; x.font = font(800, 104); x.fillText(n.label, W - 150, 430);
+  x.font = font(500, 42);
+  const win = (n.level === "medium" || n.level === "high") && n.window ? `בין ${n.window[0]} ל-${n.window[1]}` : "";
+  const agree = n.level === "uncertain" ? "המודלים חלוקים" : n.agree ? `${n.agree[0]} מתוך ${n.agree[1]} מודלים מסכימים` : "";
+  x.fillText([win, agree].filter(Boolean).join(" · "), W - 150, 520);
+  // advice
+  const tip = { low: "אפשר לאוורר הערב", uncertain: "כדאי להיות מוכנים ולעקוב אחרי ההתראות",
+                medium: "מומלץ לסגור חלונות בערב ולהכין מטהר", high: "מומלץ לסגור חלונות בערב ולהכין מטהר" }[n.level] || "";
+  x.fillStyle = "#1d2321"; x.font = font(500, 44); x.fillText(tip, W - 100, 670);
+  if (tm) { x.fillStyle = "#4b5350"; x.font = font(400, 38); x.fillText(`מחר בלילה (מבט מוקדם): ${tm.label}`, W - 100, 750); }
+  if (n.official) { x.fillStyle = "#6b7370"; x.font = font(400, 30); x.fillText(`תחזית רשמית מ-${n.official.issued} · 5 מודלי מזג אוויר`, W - 100, 820); }
+  x.font = font(400, 28); x.fillStyle = "#6b7370";
+  x.fillText("תחזית, לא ודאות · התראה בזמן אמת מהניידת באתר · מיזם קהילתי", W - 100, 935);
+  x.textAlign = "left"; x.fillStyle = "#2e8b57"; x.font = font(600, 30); x.fillText("yonifal.github.io/shoham-air", 100, 990);
+  const text = `תחזית העשן להלילה בהדרים: ${n.label}${win ? " " + win : ""}. ${tip}. מצב בזמן אמת והתראות: https://yonifal.github.io/shoham-air/`;
+  return { canvas: c, text };
+}
+
+let SHARE_K = new Date().getHours() < 12 ? "night" : "fc";
+function buildShare() {
+  const cards = { fc: makeForecastCard(), night: makeNightCard() };
+  if (!cards.fc && !cards.night) return;
+  if (!cards[SHARE_K]) SHARE_K = cards.fc ? "fc" : "night";
+  document.querySelectorAll("#sharetabs button").forEach(b => {
+    b.classList.toggle("on", b.dataset.k === SHARE_K);
+    b.style.display = cards[b.dataset.k] ? "" : "none";
+    b.onclick = () => { SHARE_K = b.dataset.k; buildShare(); };
+  });
+  const { canvas: c, text } = cards[SHARE_K];
   const url = c.toDataURL("image/png");
   document.getElementById("shareimg").src = url;
   document.getElementById("savebtn").href = url;
   document.getElementById("share").style.display = "";
-  const text = (smoke ? `ליל אמש בהדרים: ${smoke} שעות עשן, שיא בנזן ${peak.v}.` : `ליל אמש בהדרים עבר נקי (שיא בנזן ${peak.v}).`) +
-    " תחזית עשן ומצב בזמן אמת: https://yonifal.github.io/shoham-air/";
+  document.getElementById("sharemsg").textContent = "";
   document.getElementById("sharebtn").onclick = () => c.toBlob(async b => {
     const f = new File([b], "shoham-air.png", { type: "image/png" });
     try {
