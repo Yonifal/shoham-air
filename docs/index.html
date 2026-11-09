@@ -138,6 +138,15 @@
   <div class="card" id="verify" style="display:none" data-tab="forecast"><h2>האם צדקנו אתמול?</h2>
     <div id="vlast"></div><div class="legend" id="vstats"></div></div>
 
+  <div class="card" id="share" data-tab="forecast" style="display:none"><h2>📤 שתפו את הלילה שעבר</h2>
+    <div class="mute" style="margin-bottom:10px">כרטיס מוכן לוואטסאפ, עם נתוני הניידת מהלילה שעבר.</div>
+    <img id="shareimg" alt="כרטיס סיכום הלילה" style="width:100%;border-radius:12px;border:1px solid var(--grid)">
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button id="sharebtn" class="big" style="margin:0">שתפו בוואטסאפ</button>
+      <a id="savebtn" class="cp" style="display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none" download="shoham-air.png">שמרו</a>
+    </div>
+    <div id="sharemsg" class="mute"></div></div>
+
   <div class="card" data-tab="forecast"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
     <details class="models" id="models"></details>
     <div class="legend" id="fbasis"></div>
@@ -315,7 +324,7 @@ document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
 });
 function loadLive() {
   fetch("data/live.json?" + Date.now()).then(r => r.json()).then(L => {
-    LIVE = L; renderNow(); renderMetrics(); drawChart(L.last48, TAB); showReports(L.reports);
+    LIVE = L; renderNow(); renderMetrics(); drawChart(L.last48, TAB); showReports(L.reports); buildShare();
   }).catch(() => { document.querySelector("#now .big").textContent = "אין נתונים מהניידת כרגע"; });
 }
 loadLive(); loadWind();
@@ -468,6 +477,78 @@ function showTab() {
 }
 window.addEventListener("hashchange", showTab);
 showTab();
+
+// ---- morning share card (canvas image of last night) ----
+let VER = null;
+fetch("data/verify.json?" + Date.now()).then(r => r.json()).then(V => { VER = V; buildShare(); }).catch(() => {});
+function lastNight(rows) {
+  const t = rows.map(r => new Date(r.t.replace(" ", "T")));
+  const now = t[t.length - 1], start = new Date(now);
+  start.setHours(18, 0, 0, 0);
+  start.setDate(start.getDate() - (now.getHours() < 7 ? 2 : 1));   // the last night that has fully ended
+  const end = new Date(start); end.setHours(end.getHours() + 13);
+  const hrs = rows.map((r, i) => ({ t: t[i], v: r.bz })).filter(p => p.t >= start && p.t < end);
+  return { start, hrs };
+}
+function buildShare() {
+  if (!LIVE || !LIVE.last48) return;
+  const { start, hrs } = lastNight(LIVE.last48);
+  const vals = hrs.filter(h => h.v !== null);
+  if (vals.length < 8) return;
+  const smoke = vals.filter(h => h.v > 3).length, peak = vals.reduce((a, b) => b.v > a.v ? b : a);
+  const W = 1080, H = 1080, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d"); x.direction = "rtl";
+  const font = (w, px) => `${w} ${px}px system-ui, -apple-system, "Segoe UI", Arial, sans-serif`;
+  x.fillStyle = "#f6f5f1"; x.fillRect(0, 0, W, H);
+  x.fillStyle = "#ffffff"; x.beginPath(); x.roundRect(50, 50, W - 100, H - 100, 40); x.fill();
+  x.textAlign = "right"; x.fillStyle = "#6b7370"; x.font = font(500, 34);
+  x.fillText("🌬️ אוויר בשוהם · הדרים", W - 100, 130);
+  x.textAlign = "left";
+  x.fillText("ליל " + start.toLocaleDateString("he-IL", { day: "numeric", month: "numeric" }), 100, 130);
+  x.textAlign = "right"; x.fillStyle = "#1d2321"; x.font = font(700, 76);
+  x.fillText(smoke ? `הלילה: ${smoke} שעות עשן` : "הלילה עבר נקי", W - 100, 250);
+  x.fillStyle = "#4b5350"; x.font = font(400, 40);
+  x.fillText(`שיא בנזן ${peak.v} מק"ג/מ"ק ב-${String(peak.t.getHours()).padStart(2, "0")}:00`, W - 100, 320);
+  // bars, time runs left→right
+  const top = 380, bh = 330, n = 13, gap = 10, bw = (W - 200 - gap * (n - 1)) / n, mx = Math.max(10, peak.v * 1.1);
+  const col = v => v >= 8 ? "#c8392f" : v >= 3 ? "#e08a1e" : v >= 1.5 ? "#e8c35a" : "#2e8b57";
+  x.strokeStyle = "#e08a1e"; x.setLineDash([12, 10]); x.lineWidth = 3;
+  const y3 = top + bh - 3 / mx * bh; x.beginPath(); x.moveTo(100, y3); x.lineTo(W - 100, y3); x.stroke(); x.setLineDash([]);
+  for (let i = 0; i < n; i++) {
+    const h = hrs.find(p => (p.t.getHours() - 18 + 24) % 24 === i); if (!h || h.v === null) continue;
+    const hh = Math.max(8, h.v / mx * bh), bx = 100 + i * (bw + gap);
+    x.fillStyle = col(h.v); x.beginPath(); x.roundRect(bx, top + bh - hh, bw, hh, [10, 10, 0, 0]); x.fill();
+  }
+  x.fillStyle = "#6b7370"; x.font = font(400, 30); x.textAlign = "left"; x.fillText("18:00", 100, top + bh + 45);
+  x.textAlign = "center"; x.fillText("00:00", W / 2, top + bh + 45); x.textAlign = "right"; x.fillText("07:00", W - 100, top + bh + 45);
+  x.textAlign = "right"; x.font = font(400, 26); x.fillStyle = "#e08a1e"; x.fillText("קו מקווקו: 3, סף העשן", W - 100, y3 - 14);
+  // forecast vs reality
+  const nightStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+  let line2 = "";
+  if (VER && VER.last && VER.last.night === nightStr) {
+    const ic = { hit: "✅", false_alarm: "⚠️", miss: "❌", open: "🟡" }[VER.last.outcome];
+    line2 = `${ic} התחזית: ${VER.last.forecast_label} · ${VER.last.text}`;
+  }
+  x.font = font(500, 34); x.fillStyle = "#1d2321";
+  if (line2) x.fillText(line2.slice(0, 48), W - 100, 860);
+  x.font = font(400, 28); x.fillStyle = "#6b7370";
+  x.fillText("נתוני ניידת המשרד להגנת הסביבה · מיזם קהילתי", W - 100, 935);
+  x.textAlign = "left"; x.fillStyle = "#2e8b57"; x.font = font(600, 30); x.fillText("yonifal.github.io/shoham-air", 100, 990);
+  const url = c.toDataURL("image/png");
+  document.getElementById("shareimg").src = url;
+  document.getElementById("savebtn").href = url;
+  document.getElementById("share").style.display = "";
+  const text = (smoke ? `ליל אמש בהדרים: ${smoke} שעות עשן, שיא בנזן ${peak.v}.` : `ליל אמש בהדרים עבר נקי (שיא בנזן ${peak.v}).`) +
+    " תחזית עשן ומצב בזמן אמת: https://yonifal.github.io/shoham-air/";
+  document.getElementById("sharebtn").onclick = () => c.toBlob(async b => {
+    const f = new File([b], "shoham-air.png", { type: "image/png" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text }); return; }
+    } catch (e) { if (e.name === "AbortError") return; }
+    window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+    document.getElementById("sharemsg").textContent = "נפתח וואטסאפ עם הטקסט. כדי לצרף את התמונה: לחצו 'שמרו' וצרפו אותה.";
+  }, "image/png");
+}
 </script>
 </body>
 </html>
