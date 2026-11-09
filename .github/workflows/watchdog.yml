@@ -1,6 +1,7 @@
 name: watchdog loop
 # Fallback for when GitHub's cron scheduler is late or silent: one job runs the live check every
-# 15 minutes and the forecast every hour for ~5.5 hours, then starts the next job itself.
+# 10 minutes and the forecast every hour for ~5.5 hours. The next round is queued at the START
+# (it waits in the concurrency queue), so a crash or a failed start does not break the chain.
 # Free on public repositories. Stop it from the Actions tab (Disable workflow) if no longer needed.
 on:
   workflow_dispatch:
@@ -13,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
+      - name: queue next round now (waits until this one ends)
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh workflow run watchdog.yml -R ${{ github.repository }} --ref main || true
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip }
@@ -27,15 +31,18 @@ jobs:
         run: |
           git config user.name "shoham-air-bot"; git config user.email "bot@users.noreply.github.com"
           save() { git add data docs/data; git diff --cached --quiet || git commit -qm "$1"; git pull -q --rebase && git push -q || true; }
-          for i in $(seq 1 21); do
+          for i in $(seq 1 32); do
             git pull -q --rebase || true
             python -m engine.run live || echo "live failed"
-            if [ $((i % 4)) -eq 1 ]; then python -m engine.run forecast || echo "forecast failed"; fi
+            if [ $((i % 6)) -eq 1 ]; then python -m engine.run forecast || echo "forecast failed"; fi
             python -m engine.run verify || echo "verify failed"
             save "watchdog update"
-            sleep 900
+            sleep 600
           done
-      - name: start next round
+      - name: make sure a next round exists
         if: always()
         env: { GH_TOKEN: "${{ github.token }}" }
-        run: gh workflow run watchdog.yml -R ${{ github.repository }} --ref main
+        run: |
+          n=$(gh run list -R ${{ github.repository }} -w watchdog.yml -s queued --json databaseId -q length)
+          p=$(gh run list -R ${{ github.repository }} -w watchdog.yml -s pending --json databaseId -q length)
+          [ "$n" = "0" ] && [ "$p" = "0" ] && gh workflow run watchdog.yml -R ${{ github.repository }} --ref main || true

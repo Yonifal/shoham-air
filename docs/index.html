@@ -234,7 +234,10 @@ function renderMetrics() {
 function renderAge() {
   if (!LIVE) return;
   const mins = Math.round((Date.now() - new Date(LIVE.time.replace(" ", "T") + "+02:00")) / 60e3);
-  document.getElementById("mage").textContent = `מדידה אחרונה מהניידת: לפני ${mins < 1 ? "פחות מדקה" : mins + " דק'"} · מתעדכן אוטומטית`;
+  const el = document.getElementById("mage");
+  el.innerHTML = mins > 35
+    ? `<b style="color:var(--orange)">⚠ הנתונים לא התעדכנו כבר ${mins} דקות.</b> ייתכן עיכוב אצל המשרד להגנת הסביבה או אצלנו. לנתון עדכני: <a href="https://air.sviva.gov.il" target="_blank">אתר המשרד</a>`
+    : `מדידה אחרונה מהניידת: לפני ${mins < 1 ? "פחות מדקה" : mins + " דק'"} · מתעדכן בערך כל 10 דקות`;
 }
 
 // ---- wind right now (Open-Meteo, straight from the browser) ----
