@@ -1,0 +1,39 @@
+{
+ "last": {
+  "night": "2026-11-08",
+  "forecast": "high",
+  "prob": "0.62",
+  "issued": "15:34",
+  "smoke_hours": 0,
+  "bz_max": 0.54,
+  "peak": "02:00",
+  "bad": false,
+  "outcome": "false_alarm",
+  "note": "מערכת ישנה (מודל יחיד)",
+  "text": "התרענו לשווא: הלילה היה נקי",
+  "forecast_label": "סיכון גבוה"
+ },
+ "stats": {
+  "nights": 1,
+  "scored": 1,
+  "hits": 0,
+  "false_alarms": 1,
+  "misses": 0,
+  "open": 0
+ },
+ "history": [
+  {
+   "night": "2026-11-08",
+   "forecast": "high",
+   "prob": "0.62",
+   "issued": "15:34",
+   "smoke_hours": 0.0,
+   "bz_max": 0.54,
+   "peak": "02:00",
+   "bad": false,
+   "outcome": "false_alarm",
+   "note": "מערכת ישנה (מודל יחיד)"
+  }
+ ],
+ "updated": "2026-11-09T08:34+02:00"
+}

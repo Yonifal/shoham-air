@@ -88,6 +88,9 @@
     <div id="replist" class="legend"></div>
   </div>
 
+  <div class="card" id="verify" style="display:none"><h2>האם צדקנו אתמול?</h2>
+    <div id="vlast"></div><div class="legend" id="vstats"></div></div>
+
   <div class="card"><h2>תחזית ללילות הקרובים</h2><div class="nights" id="nights"></div>
     <details class="models" id="models"></details>
     <div class="legend" id="fbasis"></div>
@@ -180,6 +183,18 @@ function renderNights() {
     "<br><b>איך להשתמש:</b> התחזית הרשמית יוצאת ב-15:00 ונשארת קבועה, אלא אם המודלים השתנו משמעותית. היא אומרת אם להתכונן. ההתראה בזמן אמת מהניידת אומרת אם העשן באמת הגיע.";
   document.getElementById("fupd").textContent = "חושב לאחרונה " + new Date(F.updated).toLocaleString("he-IL");
 }
+function loadVerify() {
+  fetch("data/verify.json?" + Date.now()).then(r => r.json()).then(V => {
+    const l = V.last, st = V.stats, icon = { hit: "✅", false_alarm: "⚠️", miss: "❌", open: "🟡" }[l.outcome];
+    document.getElementById("verify").style.display = "";
+    document.getElementById("vlast").innerHTML = `<div class="big" style="font-size:17px">${icon} ${l.text}</div>
+      <div class="mute">לילה ${new Date(l.night + "T00:00").toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "numeric" })} · תחזית מ-${l.issued}: ${l.forecast_label} · בפועל: ${+l.smoke_hours} שעות עשן, שיא בנזן ${l.bz_max}${l.note ? " · " + l.note : ""}</div>`;
+    document.getElementById("vstats").textContent = `מאז שהתחלנו: ${st.hits} מתוך ${st.scored} תחזיות נכונות` +
+      (st.false_alarms ? ` · התרעות שווא: ${st.false_alarms}` : "") + (st.misses ? ` · פספוסים: ${st.misses}` : "") +
+      (st.open ? ` · לא ודאי: ${st.open}` : "") + ". הבדיקה רצה כל בוקר מול נתוני ניידת הדרים.";
+  }).catch(() => {});
+}
+loadVerify();
 function renderAll() { renderBasis(); renderNow(); renderNights(); }
 
 let TAB = "bz";

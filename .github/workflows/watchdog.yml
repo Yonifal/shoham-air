@@ -31,6 +31,7 @@ jobs:
             git pull -q --rebase || true
             python -m engine.run live || echo "live failed"
             if [ $((i % 4)) -eq 1 ]; then python -m engine.run forecast || echo "forecast failed"; fi
+            python -m engine.run verify || echo "verify failed"
             save "watchdog update"
             sleep 900
           done

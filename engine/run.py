@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from . import model, notify, reports, station, weather
+from . import model, notify, reports, station, verify, weather
 from .config import (BENZENE_HEAVY, BENZENE_SMOKE, DATA, LEVELS, NORTH_STATION_ID, NORTH_STATION_NAME,
                      REST_BASE, REST_LEVELS, REST_SLOPE, SITE_DATA, STATION_NAME)
 
@@ -176,6 +176,7 @@ def cmd_forecast():
     })
     if nights and nights[0]["night"] == str(today.date()) and now.hour >= 15:
         n = nights[0]
+        verify.log_forecast(n["night"], n["level"], n["prob"], now.strftime("%H:%M"))
         icon = {"high": "🔴", "medium": "🟠", "low": "🟢", "uncertain": "🟡"}
         tip = {"low": "אפשר לאוורר הערב.", "uncertain": "המודלים חלוקים. כדאי להיות מוכנים ולעקוב אחרי ההתראה בזמן אמת.",
                "medium": "מומלץ לסגור חלונות בערב ולהכין מטהר.", "high": "מומלץ לסגור חלונות בערב ולהכין מטהר."}
@@ -201,5 +202,9 @@ def cmd_train():
     print(model.train(st, w))
 
 
+def cmd_verify():
+    print(verify.run(send=notify.send))
+
+
 if __name__ == "__main__":
-    {"live": cmd_live, "forecast": cmd_forecast, "train": cmd_train}[sys.argv[1]]()
+    {"live": cmd_live, "forecast": cmd_forecast, "train": cmd_train, "verify": cmd_verify}[sys.argv[1]]()
