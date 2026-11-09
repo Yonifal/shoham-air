@@ -53,3 +53,15 @@ CONFIRM_MINUTES = 30       # …within this window = a confirmed smoke event
 # of Hadarim clean nights. So:  p_rest ≈ REST_BASE + REST_SLOPE · p_hadarim
 REST_BASE, REST_SLOPE = 0.13, 0.20
 REST_LEVELS = [(0.22, "medium", "סיכון"), (0.0, "low", "סיכון נמוך")]
+
+# ntfy.sh push topics (public service, no account). Unguessable suffix so strangers don't post into them.
+NTFY_PREFIX = "shoham-air-tgsbe"
+# topic key -> (pollutant, threshold µg/m³, Hebrew label)
+NTFY_THRESHOLDS = {
+    "bz15": ("Benzene", 1.5, "בנזן מעל 1.5 (התחלת עלייה)"),
+    "bz3": ("Benzene", 3.0, "בנזן מעל 3 (עשן)"),
+    "bz8": ("Benzene", 8.0, "בנזן מעל 8 (עשן כבד)"),
+    "pm15": ("PM2.5", 15.0, "PM2.5 מעל 15 (המלצת WHO)"),
+    "pm37": ("PM2.5", 37.5, "PM2.5 מעל 37.5 (התקן הישראלי)"),
+}
+NTFY_FORECAST = "forecast"   # 15:00 forecast + morning check

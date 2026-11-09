@@ -52,6 +52,11 @@
   details.models { margin-top:10px; font-size:13px; } details.models summary { cursor:pointer; color:var(--mute); }
   .mrow { display:grid; grid-template-columns:110px 1fr 40px; gap:8px; align-items:center; margin:5px 0; }
   .mbar { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; } .mbar i { display:block; height:100%; background:var(--orange); }
+  .steps { margin:0 0 10px; padding-right:18px; font-size:14px; line-height:1.7; }
+  .trow { display:flex; align-items:center; gap:8px; padding:9px 0; border-top:1px solid var(--grid); }
+  .trow .tl { flex:1; font-size:14px; }
+  .trow a, .trow button { font:inherit; font-size:13px; padding:6px 10px; border-radius:10px; border:1px solid var(--grid); background:var(--bg); color:var(--ink); text-decoration:none; cursor:pointer; white-space:nowrap; }
+  .trow a { background:var(--ink); color:var(--card); border-color:var(--ink); }
   .keys { display:flex; gap:14px; font-size:12px; color:var(--mute); margin-top:6px; flex-wrap:wrap; }
   .keys i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-left:4px; vertical-align:-1px; }
   .legend { font-size:12px; color:var(--mute); margin-top:6px; }
@@ -76,6 +81,18 @@
     <div class="metrics" id="metrics"><div class="tile wind" id="windtile"><div class="tn">רוח עכשיו</div><div class="tv">…</div></div></div>
     <div class="legend" id="mage"></div>
     <div class="legend">המספר הגדול: המדידה האחרונה, כמו באתר המשרד. החץ: מגמה לעומת לפני שעה. ההתראות מבוססות על ממוצע רבע השעה, כדי שקפיצה רגעית לא תקפיץ התראה. נתונים לא מבוקרים מהמשרד להגנת הסביבה.</div></div>
+
+  <div class="card" id="alerts"><h2>🔔 התראות לטלפון</h2>
+    <div class="mute" style="margin-bottom:10px">חינם, בלי הרשמה ובלי מספר טלפון, דרך אפליקציית <b>ntfy</b>.</div>
+    <ol class="steps">
+      <li>מתקינים את ntfy:
+        <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank">אייפון</a> ·
+        <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank">אנדרואיד</a></li>
+      <li>בוחרים התראה ולוחצים <b>הרשמה</b>. באנדרואיד האפליקציה תיפתח לבד. באייפון: לוחצים <b>העתק</b>, ובאפליקציה <b>+</b> ← מדביקים ← Subscribe.</li>
+    </ol>
+    <div id="topics"></div>
+    <div class="legend">מקבלים הודעה כשהערך עובר את הסף (לפי ממוצע רבע שעה בניידת הדרים), והודעה כשהוא יורד חזרה. אפשר להירשם לכמה התראות.</div>
+  </div>
 
   <div class="card" id="report">
     <h2>מריחים עשן עכשיו?</h2>
@@ -203,6 +220,18 @@ function loadVerify() {
   }).catch(() => {});
 }
 loadVerify();
+fetch("data/ntfy.json?" + Date.now()).then(r => r.json()).then(T => {
+  const android = /android/i.test(navigator.userAgent);
+  document.getElementById("topics").innerHTML = T.map(t =>
+    `<div class="trow"><span class="tl">${t.label}</span>
+      <a href="${android ? "ntfy://ntfy.sh/" + t.topic : "https://ntfy.sh/" + t.topic}" target="_blank">הרשמה</a>
+      <button data-t="${t.topic}">העתק</button></div>`).join("");
+  document.querySelectorAll("#topics button").forEach(b => b.onclick = () => {
+    const done = () => { b.textContent = "הועתק ✓"; setTimeout(() => b.textContent = "העתק", 2000); };
+    (navigator.clipboard ? navigator.clipboard.writeText(b.dataset.t) : Promise.reject()).then(done)
+      .catch(() => { prompt("העתיקו את שם הערוץ:", b.dataset.t); });
+  });
+}).catch(() => {});
 function renderAll() { renderBasis(); renderNow(); renderNights(); }
 
 let TAB = "bz";

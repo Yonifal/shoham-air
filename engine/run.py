@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from . import model, notify, reports, station, verify, weather
+from . import model, notify, ntfy, reports, station, verify, weather
 from .config import (BENZENE_HEAVY, BENZENE_SMOKE, DATA, LEVELS, NORTH_STATION_ID, NORTH_STATION_NAME,
                      REST_BASE, REST_LEVELS, REST_SLOPE, SITE_DATA, STATION_NAME)
 
@@ -89,6 +89,8 @@ def cmd_live():
         "updated": datetime.now(IL).isoformat(timespec="minutes"),
     })
     s = _state()
+    s["ntfy"] = ntfy.check_thresholds(raw, s.get("ntfy", {}))
+    STATE.write_text(json.dumps(s, ensure_ascii=False))
     prev = s.get("live_status", "clean")
     if status != prev:
         msg = {
@@ -183,13 +185,17 @@ def cmd_forecast():
                "medium": "מומלץ לסגור חלונות בערב ולהכין מטהר.", "high": "מומלץ לסגור חלונות בערב ולהכין מטהר."}
         win = f" בין {n['window'][0]} ל-{n['window'][1]}" if n["window"] and n["level"] in ("medium", "high") else ""
         if s.get("forecast_sent") != n["night"]:
-            notify.send(f"{icon[n['level']]} תחזית הלילה בהדרים: {n['label']}{win} "
-                        f"({n['agree'][0]} מתוך {n['agree'][1]} מודלי מזג אוויר מסכימים). {tip[n['level']]}")
+            msg = (f"{icon[n['level']]} תחזית הלילה בהדרים: {n['label']}{win} "
+                   f"({n['agree'][0]} מתוך {n['agree'][1]} מודלי מזג אוויר מסכימים). {tip[n['level']]}")
+            notify.send(msg)
+            ntfy.forecast(msg)
             s["forecast_sent"] = n["night"]
             official[n["night"]] = {"level": n["level"], "prob": n["prob"], "window": n["window"],
                                     "issued": now.strftime("%H:%M")}
         elif n.get("changed") and s.get("update_sent") != n["night"]:
-            notify.send(f"{icon[n['level']]} עדכון לתחזית הלילה בהדרים: {n['label']}{win}. {tip[n['level']]}")
+            msg = f"{icon[n['level']]} עדכון לתחזית הלילה בהדרים: {n['label']}{win}. {tip[n['level']]}"
+            notify.send(msg)
+            ntfy.forecast(msg)
             s["update_sent"] = n["night"]
             official[n["night"]] = {"level": n["level"], "prob": n["prob"], "window": n["window"],
                                     "issued": now.strftime("%H:%M")}
@@ -204,7 +210,10 @@ def cmd_train():
 
 
 def cmd_verify():
-    print(verify.run(send=notify.send))
+    def both(msg):
+        notify.send(msg)
+        ntfy.forecast(msg)
+    print(verify.run(send=both))
 
 
 if __name__ == "__main__":

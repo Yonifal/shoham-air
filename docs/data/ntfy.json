@@ -1,0 +1,32 @@
+[
+ {
+  "key": "bz15",
+  "topic": "shoham-air-tgsbe-bz15",
+  "label": "בנזן מעל 1.5 (התחלת עלייה)"
+ },
+ {
+  "key": "bz3",
+  "topic": "shoham-air-tgsbe-bz3",
+  "label": "בנזן מעל 3 (עשן)"
+ },
+ {
+  "key": "bz8",
+  "topic": "shoham-air-tgsbe-bz8",
+  "label": "בנזן מעל 8 (עשן כבד)"
+ },
+ {
+  "key": "pm15",
+  "topic": "shoham-air-tgsbe-pm15",
+  "label": "PM2.5 מעל 15 (המלצת WHO)"
+ },
+ {
+  "key": "pm37",
+  "topic": "shoham-air-tgsbe-pm37",
+  "label": "PM2.5 מעל 37.5 (התקן הישראלי)"
+ },
+ {
+  "key": "forecast",
+  "topic": "shoham-air-tgsbe-forecast",
+  "label": "התחזית היומית (15:00) ובדיקת הבוקר"
+ }
+]
