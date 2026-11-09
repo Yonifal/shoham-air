@@ -227,7 +227,7 @@ function renderMetrics() {
     const lvl = w == null ? "" : v >= h ? "heavy" : v >= w ? "warn" : "ok";
     const d = prev == null ? 0 : v - prev, rel = prev ? Math.abs(d) / Math.max(prev, 0.5) : 0;
     const arrow = rel < 0.15 ? "→" : d > 0 ? "↑" : "↓";
-    return `<div class="tile ${lvl}"><div class="tn">${name}</div><div class="tv">${v < 10 ? v.toFixed(1) : Math.round(v)}<span class="tu"> µg/m³</span> <span class="ta" title="לעומת לפני שעה">${arrow}</span></div><div class="tnote">${note}</div></div>`;
+    return `<div class="tile ${lvl}"><div class="tn">${name}</div><div class="tv">${v.toLocaleString("en-US", { maximumFractionDigits: 2 })}<span class="tu"> µg/m³</span> <span class="ta" title="לעומת לפני שעה">${arrow}</span></div><div class="tnote">${note}</div></div>`;
   }).join("") + document.getElementById("windtile").outerHTML;
   renderAge();
 }
