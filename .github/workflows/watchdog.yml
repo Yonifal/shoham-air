@@ -30,9 +30,9 @@ jobs:
           WA_RECIPIENTS: ${{ secrets.WA_RECIPIENTS }}
         run: |
           git config user.name "shoham-air-bot"; git config user.email "bot@users.noreply.github.com"
-          save() { git add data docs/data; git diff --cached --quiet || git commit -qm "$1"; git pull -q --rebase && git push -q || true; }
+          save() { git add data docs/data; git diff --cached --quiet || git commit -qm "$1"; for n in 1 2 3; do git pull -q --rebase -X theirs && git push -q && break; sleep $((n*5)); done; true; }
           for i in $(seq 1 32); do
-            git pull -q --rebase || true
+            git pull -q --rebase -X theirs || git rebase --abort || true
             python -m engine.run live || echo "live failed"
             if [ $((i % 6)) -eq 1 ]; then python -m engine.run forecast || echo "forecast failed"; fi
             python -m engine.run verify || echo "verify failed"
