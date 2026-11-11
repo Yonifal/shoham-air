@@ -6,10 +6,11 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier
 
-from .config import BAD_NIGHT_HOURS, BENZENE_SMOKE, DATA, TOWARD_SECTOR
+from .config import BAD_NIGHT_HOURS, BENZENE_SMOKE, BENZENE_STRONG, DATA, TOWARD_SECTOR
 
 FEATURES = ["u", "v", "ws", "blh", "blh_min", "tow", "prcp", "rh", "temp", "doy_s", "doy_c"]
-MODEL_PATH = DATA / "model.joblib"
+MODEL_PATH = DATA / "model.joblib"                # smoke night: benzene >1 for 3+ hours
+STRONG_PATH = DATA / "model_strong.joblib"        # strong-smoke night: benzene >3 for 3+ hours
 
 
 def night_of(idx: pd.DatetimeIndex) -> pd.DatetimeIndex:
@@ -43,30 +44,32 @@ def night_features(w: pd.DataFrame) -> pd.DataFrame:
     return f
 
 
-def night_labels(st: pd.DataFrame) -> pd.DataFrame:
+def night_labels(st: pd.DataFrame, thr: float = BENZENE_SMOKE) -> pd.DataFrame:
     s = st[is_night(st.index) & st.Benzene.notna()].copy()
     s["night"] = night_of(s.index)
     g = s.groupby("night").agg(n=("Benzene", "size"), bz_max=("Benzene", "max"),
-                               smoke_hours=("Benzene", lambda x: int((x > BENZENE_SMOKE).sum())))
+                               smoke_hours=("Benzene", lambda x: int((x > thr).sum())))
     g = g[g.n >= 10]
     g["bad"] = g.smoke_hours >= BAD_NIGHT_HOURS
     return g
 
 
 def train(st: pd.DataFrame, w: pd.DataFrame) -> dict:
-    X = night_features(w).join(night_labels(st), how="inner")
-    clf = HistGradientBoostingClassifier(max_depth=3, learning_rate=0.05, max_iter=200,
-                                         min_samples_leaf=15, random_state=0)
-    clf.fit(X[FEATURES], X.bad)
-    joblib.dump(clf, MODEL_PATH)
-    info = {"nights": int(len(X)), "bad_nights": int(X.bad.sum()),
-            "trained_until": str(X.index.max().date())}
+    info = {}
+    for path, thr, key in [(MODEL_PATH, BENZENE_SMOKE, "smoke"), (STRONG_PATH, BENZENE_STRONG, "strong")]:
+        X = night_features(w).join(night_labels(st, thr), how="inner")
+        clf = HistGradientBoostingClassifier(max_depth=3, learning_rate=0.05, max_iter=200,
+                                             min_samples_leaf=15, random_state=0)
+        clf.fit(X[FEATURES], X.bad)
+        joblib.dump(clf, path)
+        info[key] = {"nights": int(len(X)), "bad_nights": int(X.bad.sum())}
+    info["trained_until"] = str(X.index.max().date())
     (DATA / "model_info.json").write_text(json.dumps(info, ensure_ascii=False, indent=1))
     return info
 
 
-def predict(w: pd.DataFrame) -> pd.Series:
-    clf = joblib.load(MODEL_PATH)
+def predict(w: pd.DataFrame, strong: bool = False) -> pd.Series:
+    clf = joblib.load(STRONG_PATH if strong else MODEL_PATH)
     f = night_features(w)
     f = f[f.hours >= 10]
     return pd.Series(clf.predict_proba(f[FEATURES])[:, 1], index=f.index)

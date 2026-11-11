@@ -136,6 +136,7 @@ def cmd_forecast():
     if not ws:
         ws = {"gfs_seamless": weather.forecast(days=3, past_days=1)}
     probs = pd.DataFrame({m: model.predict(w) for m, w in ws.items()})
+    strong = pd.DataFrame({m: model.predict(w, strong=True) for m, w in ws.items()}).mean(axis=1)
     mean, lo, hi = probs.mean(axis=1), probs.min(axis=1), probs.max(axis=1)
     # hourly rule for the window: share of models flagging the hour
     risk = pd.concat({m: model.hourly_risk(w) for m, w in ws.items()}, axis=1).mean(axis=1)
@@ -158,6 +159,7 @@ def cmd_forecast():
                  "level": lvl, "label": LABELS[lvl], "models": {weather.MODELS[m]: round(float(v), 2)
                                                                  for m, v in probs.loc[night].items()},
                  "agree": [n_agree, len(probs.columns)], "early": night > today,
+                 "strong": round(float(strong.get(night, 0)), 2),
                  "window": [on.min().strftime("%H:%M"), on.max().strftime("%H:%M")] if len(on) else None}
         # after 15:00 tonight's forecast is "official": keep it unless the models moved a lot
         off = official.get(key_n)
@@ -191,7 +193,8 @@ def cmd_forecast():
         win = f" בין {n['window'][0]} ל-{n['window'][1]}" if n["window"] and n["level"] in ("medium", "high") else ""
         if s.get("forecast_sent") != n["night"]:
             msg = (f"{icon[n['level']]} תחזית הלילה בהדרים: {n['label']}{win} "
-                   f"({n['agree'][0]} מתוך {n['agree'][1]} מודלי מזג אוויר מסכימים). {tip[n['level']]}")
+                   f"({n['agree'][0]} מתוך {n['agree'][1]} מודלי מזג אוויר מסכימים). "
+                   f"סיכוי לעשן משמעותי: {int(n['strong'] * 100)}%. {tip[n['level']]}")
             notify.send(msg)
             ntfy.forecast(msg)
             s["forecast_sent"] = n["night"]

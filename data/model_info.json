@@ -1,5 +1,11 @@
 {
- "nights": 325,
- "bad_nights": 240,
+ "smoke": {
+  "nights": 325,
+  "bad_nights": 240
+ },
+ "strong": {
+  "nights": 325,
+  "bad_nights": 114
+ },
  "trained_until": "2026-11-07"
 }

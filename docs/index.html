@@ -259,8 +259,9 @@ function renderNights() {
     const stamp = n.changed ? `<div class="r">⚠ עודכן ב-${n.changed.at} (היה: ${({high:"עשן צפוי",medium:"עשן אפשרי",low:"צפוי נקי",uncertain:"לא ודאי"})[n.changed.from]})</div>`
       : n.official ? `<div class="r">תחזית רשמית מ-${n.official.issued}</div>` : "";
     const other = had || !n.rest ? "" : `<div class="r">הערכה ל${h} · בהדרים: ${n.label}</div>`;
+    const strongTxt = had && n.strong != null && !n.early ? `<div class="r">עשן משמעותי (בנזן מעל 3): ${Math.round(n.strong * 100)}%</div>` : "";
     return `<div class="night ${v.level}${n.early ? " early" : ""}"><div class="t">${dayName(n.night)}</div><div class="l">${v.label}</div>
-      <div class="t">${win ? win + " · " : ""}${sub}</div>${stamp}${other}</div>`; }).join("");
+      <div class="t">${win ? win + " · " : ""}${sub}</div>${strongTxt}${stamp}${other}</div>`; }).join("");
   const n0 = F.nights[0];
   document.getElementById("models").innerHTML = n0 && n0.models ? `<summary>מה אומר כל מודל להלילה?</summary>` +
     Object.entries(n0.models).map(([m, p]) => `<div class="mrow"><span>${m}</span><span class="mbar"><i style="width:${Math.round(p*100)}%"></i></span><b>${pct(p)}</b></div>`).join("") +
@@ -574,8 +575,9 @@ function makeForecastCard() {
   const tip = { low: "אפשר לאוורר הערב", uncertain: "כדאי להיות מוכנים ולעקוב אחרי ההתראות",
                 medium: "מומלץ לסגור חלונות בערב ולהכין מטהר", high: "מומלץ לסגור חלונות בערב ולהכין מטהר" }[n.level] || "";
   x.fillStyle = "#1d2321"; x.font = font(500, 44); x.fillText(tip, W - 100, 670);
-  if (tm) { x.fillStyle = "#4b5350"; x.font = font(400, 38); x.fillText(`מחר בלילה (מבט מוקדם): ${tm.label}`, W - 100, 750); }
-  if (n.official) { x.fillStyle = "#6b7370"; x.font = font(400, 30); x.fillText(`תחזית רשמית מ-${n.official.issued} · 5 מודלי מזג אוויר`, W - 100, 820); }
+  if (n.strong != null) { x.fillStyle = "#4b5350"; x.font = font(400, 38); x.fillText(`סיכוי לעשן משמעותי (בנזן מעל 3): ${Math.round(n.strong * 100)}%`, W - 100, 735); }
+  if (tm) { x.fillStyle = "#4b5350"; x.font = font(400, 34); x.fillText(`מחר בלילה (מבט מוקדם): ${tm.label}`, W - 100, 790); }
+  if (n.official) { x.fillStyle = "#6b7370"; x.font = font(400, 30); x.fillText(`תחזית רשמית מ-${n.official.issued} · 5 מודלי מזג אוויר`, W - 100, 845); }
   x.font = font(400, 28); x.fillStyle = "#6b7370";
   x.fillText("תחזית, לא ודאות · התראה בזמן אמת מהניידת באתר · מיזם קהילתי", W - 100, 935);
   x.textAlign = "left"; x.fillStyle = "#2e8b57"; x.font = font(600, 30); x.fillText("yonifal.github.io/shoham-air", 100, 990);
