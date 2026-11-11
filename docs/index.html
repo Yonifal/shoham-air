@@ -161,14 +161,15 @@
       <div class="tabs"><button data-k="bz" class="on">בנזן</button><button data-k="pm">PM2.5</button></div></div>
     <div class="csum" id="csum"></div>
     <div class="cwrap"><svg id="chart" viewBox="0 0 520 210"></svg><div class="tip" id="tip"></div></div>
-    <div class="keys"><span><i style="background:var(--green)"></i>נקי</span><span><i style="background:#d9b33a"></i>בינוני</span><span><i style="background:var(--orange)"></i>עשן</span><span><i style="background:var(--red)"></i>כבד</span><span><i style="background:var(--night)"></i>לילה</span><span>▲ דיווחי תושבים</span></div>
+    <div class="keys"><span><i style="background:var(--green)"></i>נקי</span><span><i style="background:#d9b33a"></i>בינוני</span><span><i style="background:var(--orange)"></i>עשן</span><span><i style="background:var(--red)"></i>משמעותי</span><span><i style="background:var(--night)"></i>לילה</span><span>▲ דיווחי תושבים</span></div>
     <div class="legend">גע או רחף מעל הגרף כדי לראות ערך לפי שעה</div></div>
 
   <div class="card" data-tab="info"><details open><summary>איך זה עובד?</summary>
     <p>העשן מגיע להדרים כמעט רק כשהרוח נושבת ממזרח או מדרום-מזרח, עד כ-11 קמ"ש (כולל בריזה שמרגישים בבירור), ומתחת לשכבת היפוך נמוכה. ברוח חזקה מזה העשן מתפזר בדרך. זה קורה בעיקר בלילה, עם שיא סביב 03:00.
     המודל אומן על כל הנתונים של ניידת 5 מאז דצמבר 2025 ומשווה כל יום את תחזית הרוח לדפוסים האלה.</p>
     <p>מזג האוויר קובע מתי עשן <b>יכול</b> להגיע. האם שורפים באותו לילה, את זה רק הניידת יודעת, ולכן יש גם התראה בזמן אמת.</p>
-    <p>"לילה צפוי נקי" הוא החיזוי האמין ביותר. "סיכון" אומר שהתנאים מתאימים לעשן.</p>
+    <p><b>מה נחשב עשן?</b> ברוב השעות הנקיות הבנזן בהדרים הוא בערך 0.17. מ-1 ומעלה (פי 6 מהרגיל) מרגישים ריח עשן, ולכן זה הסף ל"עשן". מעל 3 זה "עשן משמעותי", ומעל 8 "עשן כבד". עד 11 בנובמבר הסף היה 3, ושכנים צדקו כשאמרו שהאתר הראה "נקי" בזמן שהיה ריח חריף.</p>
+    <p>"לילה צפוי נקי" הוא החיזוי האמין ביותר. "עשן צפוי" ו"עשן אפשרי" אומרים שהתנאים מתאימים לעשן.</p>
     <p><b>ומה עם שאר שוהם?</b> הניידת שמודדת בנזן, הסימן המובהק לשריפת פלסטיק, נמצאת <b>רק בהדרים</b>. מה שאנחנו יודעים על שאר היישוב מבוסס על השוואה לתחנות אחרות של המשרד, דצמבר 2025–נובמבר 2026:</p>
     <ul>
       <li><b>תחנה קבועה במרכז-צפון שוהם</b> (PM2.5 בלבד, בלי בנזן): בשעות שבהן היה עשן בהדרים, ה-PM2.5 בה עלה בממוצע בכ-45% (מ-11 ל-16). כלומר העשן מגיע גם לשם, אבל חלש יותר.</li>
@@ -192,8 +193,9 @@
   <a href="#info" data-go="info"><span>ℹ️</span>מידע</a>
 </nav>
 <script>
-const COL = { clean:"var(--green)", smoke:"var(--orange)", heavy:"var(--red)" };
-const TXT = { clean:"האוויר נקי עכשיו", smoke:"יש עשן עכשיו", heavy:"זיהום כבד עכשיו" };
+const COL = { clean:"var(--green)", elevated:"#d9b33a", smoke:"var(--orange)", strong:"var(--red)", heavy:"#8e1f17" };
+const TXT = { clean:"האוויר נקי עכשיו", elevated:"בנזן מעט מעל הרגיל", smoke:"יש עשן באוויר עכשיו",
+              strong:"עשן משמעותי עכשיו", heavy:"עשן כבד עכשיו" };
 const hm = s => new Date(s.replace(" ","T")).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
 const dayName = d => { const t=new Date(); t.setHours(0,0,0,0); const x=new Date(d+"T00:00");
   const diff=Math.round((x-t)/864e5); return diff===0?"הלילה":diff===1?"מחר בלילה":x.toLocaleDateString("he-IL",{weekday:"long"})+" בלילה"; };
@@ -216,11 +218,13 @@ function renderNow() {
   let col, txt, lines;
   if (isHadarim(h)) {
     const pm = L.metrics && L.metrics["PM2.5"] ? (L.metrics["PM2.5"].last ?? L.metrics["PM2.5"].v) : L.pm25;
-    if (L.status !== "clean") { col = COL[L.status]; txt = TXT[L.status]; }
+    if (L.status && L.status !== "clean") { col = COL[L.status] || COL.smoke; txt = TXT[L.status] || TXT.smoke; }
     else if (pm != null && pm >= 37.5) { col = COL.smoke; txt = "אין סימני עשן משריפות, אבל איכות האוויר ירודה"; }
     else if (pm != null && pm >= 15) { col = "#d9b33a"; txt = "אין סימני עשן משריפות · איכות אוויר בינונית"; }
     else { col = COL.clean; txt = "האוויר נקי עכשיו"; }
     lines = [hadarimLine, northLine];
+    const bzNow = L.metrics && L.metrics.Benzene ? L.metrics.Benzene.v : L.benzene;
+    if (L.status && L.status !== "clean") lines.unshift(`בנזן ${bzNow}: פי ${Math.round(bzNow / 0.17)} מהרקע הרגיל בהדרים (כ-0.17). מ-1 ומעלה מרגישים ריח עשן.`);
     if (L.status === "clean" && pm != null && pm >= 15) lines.unshift(`PM2.5 ${pm}: מעל המלצת ארגון הבריאות העולמי (15)${pm >= 37.5 ? " ומעל התקן הישראלי (37.5)" : ", מתחת לתקן הישראלי (37.5)"}. "עשן" נקבע לפי בנזן.`);
   }
   else {
@@ -228,7 +232,7 @@ function renderNow() {
     if (rep && rep.confirmed) { col = COL.smoke; txt = `תושבי ${h} מדווחים על עשן עכשיו`; }
     else if (rep) { col = "#d9b33a"; txt = `יש דיווח על ריח עשן מ${h}`; }
     else if (L.north && L.north.pm25 >= 35) { col = COL.smoke; txt = `ייתכן עשן עכשיו ב${h}`; }
-    else if (L.status !== "clean") { col = "#d9a441"; txt = `יש עשן בהדרים. ייתכן שיגיע גם ל${h}`; }
+    else if (L.status && L.status !== "clean" && L.status !== "elevated") { col = "#d9a441"; txt = `יש עשן בהדרים. ייתכן שיגיע גם ל${h}`; }
     else { col = COL.clean; txt = `אין סימנים לעשן ב${h} כרגע`; }
     const ago = t => { const m = Math.round((Date.now() - new Date(t.replace(" ", "T") + "+02:00")) / 60e3);
       return m < 60 ? `לפני ${m} דק'` : m < 1440 ? `לפני ${Math.round(m / 60)} שעות` : `לפני ${Math.round(m / 1440)} ימים`; };
@@ -252,7 +256,7 @@ function renderNights() {
     if (n.early) sub = "מבט מוקדם · יתעדכן מחר";
     else if (n.level === "uncertain") sub = "המודלים חלוקים";
     else sub = n.agree ? `${n.agree[0]} מתוך ${n.agree[1]} מודלים מסכימים` : pct(v.prob);
-    const stamp = n.changed ? `<div class="r">⚠ עודכן ב-${n.changed.at} (היה: ${({high:"סיכון גבוה",medium:"סיכון",low:"צפוי נקי",uncertain:"לא ודאי"})[n.changed.from]})</div>`
+    const stamp = n.changed ? `<div class="r">⚠ עודכן ב-${n.changed.at} (היה: ${({high:"עשן צפוי",medium:"עשן אפשרי",low:"צפוי נקי",uncertain:"לא ודאי"})[n.changed.from]})</div>`
       : n.official ? `<div class="r">תחזית רשמית מ-${n.official.issued}</div>` : "";
     const other = had || !n.rest ? "" : `<div class="r">הערכה ל${h} · בהדרים: ${n.label}</div>`;
     return `<div class="night ${v.level}${n.early ? " early" : ""}"><div class="t">${dayName(n.night)}</div><div class="l">${v.label}</div>
@@ -262,7 +266,7 @@ function renderNights() {
     Object.entries(n0.models).map(([m, p]) => `<div class="mrow"><span>${m}</span><span class="mbar"><i style="width:${Math.round(p*100)}%"></i></span><b>${pct(p)}</b></div>`).join("") +
     `<div class="legend">סיכוי ללילה מזוהם (3 שעות ומעלה עם בנזן מעל 3) לפי תחזית הרוח של כל מודל.</div>` : "";
   document.getElementById("fbasis").innerHTML = (had
-    ? "התחזית משקללת 5 מודלי מזג אוויר (אירופי, גרמני, אמריקאי, צרפתי ובריטי) ומבוססת על הנתונים של ניידת הדרים. בבדיקה על החורף שעבר היא זיהתה 72% מהלילות המזוהמים."
+    ? "התחזית משקללת 5 מודלי מזג אוויר (אירופי, גרמני, אמריקאי, צרפתי ובריטי) ומבוססת על הנתונים של ניידת הדרים. בבדיקה על השנה האחרונה היא זיהתה 93% מלילות העשן (בנזן מעל 1 לפחות 3 שעות)."
     : `ל${h} אין תחזית משלה, כי אין בה מדידה. ההערכה נגזרת מהתחזית של הדרים ומההיסטוריה של התחנה הקבועה במרכז-צפון: בלילות שבהם הדרים הייתה מזוהמת, במרכז-צפון היה עשן ב-33% מהמקרים. כשהדרים הייתה נקייה, ב-13% בלבד. אחרי כמה שבועות של דיווחים מ${h}, נוכל לבנות ל${h} תחזית משלה.`) +
     "<br><b>איך להשתמש:</b> התחזית הרשמית יוצאת ב-15:00 ונשארת קבועה, אלא אם המודלים השתנו משמעותית. היא אומרת אם להתכונן. ההתראה בזמן אמת מהניידת אומרת אם העשן באמת הגיע.";
   document.getElementById("fupd").textContent = "חושב לאחרונה " + new Date(F.updated).toLocaleString("he-IL");
@@ -338,10 +342,11 @@ setInterval(renderAge, 30e3);
 // ---- real-time metrics (Hadarim unit) ----
 // key, label, mid (WHO daily guideline), warn (Israeli daily environmental value), heavy, note
 const MET = [
-  ["Benzene", "בנזן", 1.5, 3, 8, "הסימן המובהק לשריפת פלסטיק"],
+  ["Benzene", "בנזן", 0.6, 1, 3, "הסימן המובהק לשריפת פלסטיק · רגיל: כ-0.17 · מ-1: ריח עשן"],
   ["PM2.5", "PM2.5", 15, 37.5, 75, "חלקיקים עדינים · WHO: 15 · תקן ישראלי: 37.5"],
   ["PM10", "PM10", 45, 130, 250, "חלקיקים גסים, גם אבק · WHO: 45 · תקן: 130"],
   ["Toluene", "טולואן", null, null, null, "מלווה בנזן בשריפות"],
+  ["NO", "NO", null, null, null, "חנקן חד-חמצני: סימן לבעירה ולתחבורה, קופץ בשריפות"],
   ["NO2", "NO₂", 25, 100, 200, "תחמוצות חנקן, בעיקר תחבורה · WHO: 25"],
   ["O3", "אוזון", 100, 140, 180, "גבוה בצהריים, לא קשור לשריפות"],
 ];
@@ -387,7 +392,7 @@ function loadWind() {
 
 // Hourly bars coloured by level, night hours shaded, tap/hover for exact value
 const SPEC = {
-  bz: { name:"בנזן", unit:'מק"ג/מ"ק', warn:3, heavy:8, floor:6 },
+  bz: { name:"בנזן", unit:'מק"ג/מ"ק', warn:1, heavy:3, floor:4 },
   pm: { name:"PM2.5", unit:'מק"ג/מ"ק', warn:35, heavy:75, floor:50 },
 };
 function drawChart(rows, k) {
@@ -499,7 +504,7 @@ function makeNightCard() {
   const { start, hrs } = lastNight(LIVE.last48);
   const vals = hrs.filter(h => h.v !== null);
   if (vals.length < 8) return null;
-  const smoke = vals.filter(h => h.v > 3).length, peak = vals.reduce((a, b) => b.v > a.v ? b : a);
+  const smoke = vals.filter(h => h.v > 1).length, peak = vals.reduce((a, b) => b.v > a.v ? b : a);
   const W = 1080, H = 1080, c = document.createElement("canvas"); c.width = W; c.height = H;
   const x = c.getContext("2d"); x.direction = "rtl";
   const font = (w, px) => `${w} ${px}px system-ui, -apple-system, "Segoe UI", Arial, sans-serif`;
@@ -514,10 +519,10 @@ function makeNightCard() {
   x.fillStyle = "#4b5350"; x.font = font(400, 40);
   x.fillText(`שיא בנזן ${peak.v} מק"ג/מ"ק ב-${String(peak.t.getHours()).padStart(2, "0")}:00`, W - 100, 320);
   // bars, time runs left→right
-  const top = 380, bh = 330, n = 13, gap = 10, bw = (W - 200 - gap * (n - 1)) / n, mx = Math.max(10, peak.v * 1.1);
-  const col = v => v >= 8 ? "#c8392f" : v >= 3 ? "#e08a1e" : v >= 1.5 ? "#e8c35a" : "#2e8b57";
+  const top = 380, bh = 330, n = 13, gap = 10, bw = (W - 200 - gap * (n - 1)) / n, mx = Math.max(4, peak.v * 1.1);
+  const col = v => v >= 3 ? "#c8392f" : v >= 1 ? "#e08a1e" : v >= 0.6 ? "#e8c35a" : "#2e8b57";
   x.strokeStyle = "#e08a1e"; x.setLineDash([12, 10]); x.lineWidth = 3;
-  const y3 = top + bh - 3 / mx * bh; x.beginPath(); x.moveTo(100, y3); x.lineTo(W - 100, y3); x.stroke(); x.setLineDash([]);
+  const y3 = top + bh - 1 / mx * bh; x.beginPath(); x.moveTo(100, y3); x.lineTo(W - 100, y3); x.stroke(); x.setLineDash([]);
   for (let i = 0; i < n; i++) {
     const h = hrs.find(p => (p.t.getHours() - 18 + 24) % 24 === i); if (!h || h.v === null) continue;
     const hh = Math.max(8, h.v / mx * bh), bx = 100 + i * (bw + gap);
@@ -525,7 +530,7 @@ function makeNightCard() {
   }
   x.fillStyle = "#6b7370"; x.font = font(400, 30); x.textAlign = "left"; x.fillText("18:00", 100, top + bh + 45);
   x.textAlign = "center"; x.fillText("00:00", W / 2, top + bh + 45); x.textAlign = "right"; x.fillText("07:00", W - 100, top + bh + 45);
-  x.textAlign = "right"; x.font = font(400, 26); x.fillStyle = "#e08a1e"; x.fillText("קו מקווקו: 3, סף העשן", W - 100, y3 - 14);
+  x.textAlign = "right"; x.font = font(400, 26); x.fillStyle = "#e08a1e"; x.fillText("קו מקווקו: 1, ריח עשן מורגש", W - 100, y3 - 14);
   // forecast vs reality
   const nightStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
   let line2 = "";

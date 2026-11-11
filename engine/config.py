@@ -27,14 +27,18 @@ SOURCES = {
 TOWARD_SECTOR = (75, 170)
 
 # Smoke definitions (µg/m³). Benzene is the burning-plastic signature.
-BENZENE_SMOKE = 3.0        # hourly value that counts as a smoke hour
+# Clean-air background at the Hadarim unit is ~0.17 (daytime median). Residents clearly smell smoke
+# from ~1, so 1 is "smoke"; 3 is "strong smoke"; 8 is "heavy". (Until Nov 11 2026 the smoke line was 3,
+# which labelled nights like Nov 10 — benzene 1.3–2.9 for 12 hours — as clean.)
+BENZENE_SMOKE = 1.0        # hourly value that counts as a smoke hour
+BENZENE_STRONG = 3.0
 BENZENE_HEAVY = 8.0
-BAD_NIGHT_HOURS = 3        # a night with >=3 smoke hours is a "bad night"
+BAD_NIGHT_HOURS = 3        # a night with >=3 smoke hours is a "smoke night"
 
 # Alert levels from the model's probability
 LEVELS = [  # (min probability, key, Hebrew label)
-    (0.50, "high", "סיכון גבוה"),
-    (0.25, "medium", "סיכון"),
+    (0.50, "high", "עשן צפוי"),
+    (0.25, "medium", "עשן אפשרי"),
     (0.00, "low", "לילה צפוי נקי"),
 ]
 
@@ -52,14 +56,14 @@ CONFIRM_MINUTES = 30       # …within this window = a confirmed smoke event
 # central/north station (598, PM2.5): a "bad night" there followed 33% of Hadarim bad nights and 13%
 # of Hadarim clean nights. So:  p_rest ≈ REST_BASE + REST_SLOPE · p_hadarim
 REST_BASE, REST_SLOPE = 0.13, 0.20
-REST_LEVELS = [(0.22, "medium", "סיכון"), (0.0, "low", "סיכון נמוך")]
+REST_LEVELS = [(0.22, "medium", "עשן אפשרי"), (0.0, "low", "סיכון נמוך")]
 
 # ntfy.sh push topics (public service, no account). Unguessable suffix so strangers don't post into them.
 NTFY_PREFIX = "shoham-air-tgsbe"
 # topic key -> (pollutant, threshold µg/m³, Hebrew label)
 NTFY_THRESHOLDS = {
-    "bz15": ("Benzene", 1.5, "בנזן מעל 1.5 (התחלת עלייה)"),
-    "bz3": ("Benzene", 3.0, "בנזן מעל 3 (עשן)"),
+    "bz15": ("Benzene", 1.5, "בנזן מעל 1.5 (עשן, ריח מורגש)"),
+    "bz3": ("Benzene", 3.0, "בנזן מעל 3 (עשן משמעותי)"),
     "bz8": ("Benzene", 8.0, "בנזן מעל 8 (עשן כבד)"),
     "pm15": ("PM2.5", 15.0, "PM2.5 מעל 15 (המלצת WHO)"),
     "pm37": ("PM2.5", 37.5, "PM2.5 מעל 37.5 (התקן הישראלי)"),

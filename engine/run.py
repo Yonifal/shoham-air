@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from . import model, notify, ntfy, reports, station, verify, weather
-from .config import (BENZENE_HEAVY, BENZENE_SMOKE, DATA, LEVELS, NORTH_STATION_ID, NORTH_STATION_NAME,
+from .config import (BENZENE_HEAVY, BENZENE_SMOKE, BENZENE_STRONG, DATA, LEVELS, NORTH_STATION_ID, NORTH_STATION_NAME,
                      REST_BASE, REST_LEVELS, REST_SLOPE, SITE_DATA, STATION_NAME)
 
 STATE = DATA / "state.json"
@@ -39,7 +39,8 @@ def cmd_live():
     now15 = raw.tail(3)                       # last 15 minutes of 5-min readings
     bz = float(now15.Benzene.mean())
     pm = now15["PM2.5"].mean()
-    status = "heavy" if bz >= BENZENE_HEAVY else "smoke" if bz >= BENZENE_SMOKE else "clean"
+    status = ("heavy" if bz >= BENZENE_HEAVY else "strong" if bz >= BENZENE_STRONG
+              else "smoke" if bz >= BENZENE_SMOKE else "elevated" if bz >= 0.6 else "clean")
     # 48 whole hours ending with the current (possibly partial) hour
     cur_hour = raw.index[-1].floor("h")
     hist = st[(st.index > cur_hour - pd.Timedelta(hours=48)) & (st.index < cur_hour)]
@@ -67,7 +68,7 @@ def cmd_live():
         print("north station failed:", e)
     # every pollutant the unit measures: last 15 min vs the 15 min an hour earlier (for the trend arrow)
     metrics = {}
-    for k in ["Benzene", "Toluene", "PM2.5", "PM10", "NO2", "O3"]:
+    for k in ["Benzene", "Toluene", "PM2.5", "PM10", "NO", "NO2", "O3"]:
         if k in raw:
             v = raw[k].dropna()
             if len(v):
@@ -96,18 +97,20 @@ def cmd_live():
     prev = s.get("live_status", "clean")
     if status != prev:
         msg = {
-            "smoke": f"🟠 העשן הגיע להדרים: בנזן {bz:.1f} מק\"ג/מ\"ק. מומלץ לסגור חלונות.",
+            "elevated": None,
+            "smoke": f"🟠 יש עשן בהדרים: בנזן {bz:.2f} מק\"ג/מ\"ק. מומלץ לסגור חלונות.",
+            "strong": f"🔴 עשן משמעותי בהדרים: בנזן {bz:.2f}. סגרו חלונות.",
             "heavy": f"🔴 זיהום כבד בהדרים: בנזן {bz:.1f}. סגרו חלונות, הפעילו מטהר.",
             "clean": "🟢 האוויר בהדרים חזר לנקי. אפשר לאוורר.",
         }[status]
         # avoid flapping: announce "clean" only after a full clean hour
-        if status != "clean" or (raw.tail(12).Benzene < BENZENE_SMOKE).all():
+        if msg and (status not in ("clean", "elevated") or (raw.tail(12).Benzene < BENZENE_SMOKE).all()):
             notify.send(msg)
             s["live_status"] = status
             STATE.write_text(json.dumps(s))
 
 
-LABELS = {"high": "סיכון גבוה", "medium": "סיכון", "low": "לילה צפוי נקי", "uncertain": "לא ודאי"}
+LABELS = {"high": "עשן צפוי", "medium": "עשן אפשרי", "low": "לילה צפוי נקי", "uncertain": "לא ודאי"}
 ORDER = {"low": 0, "uncertain": 1, "medium": 1, "high": 2}
 HYST = 0.06          # a level changes only when the probability clears the threshold by this margin
 UPDATE_DELTA = 0.20  # after 15:00 the published forecast changes only on a move this big

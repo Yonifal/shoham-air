@@ -9,7 +9,7 @@ from .config import BAD_NIGHT_HOURS, BENZENE_SMOKE, DATA, SITE_DATA
 IL = timezone(timedelta(hours=2))
 LOG = DATA / "forecast_log.csv"      # one row per night: the forecast we stood behind (15:00)
 VER = DATA / "verification.csv"      # one row per night: forecast vs measured
-NAMES = {"high": "סיכון גבוה", "medium": "סיכון", "low": "לילה נקי", "uncertain": "לא ודאי"}
+NAMES = {"high": "עשן צפוי", "medium": "עשן אפשרי", "low": "לילה נקי", "uncertain": "לא ודאי"}
 
 
 def log_forecast(night: str, level: str, prob: float, issued: str, note: str = ""):
