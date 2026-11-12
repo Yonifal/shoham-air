@@ -110,7 +110,7 @@
     <div class="legend">המספר הגדול: המדידה האחרונה, כמו באתר המשרד. החץ: מגמה לעומת לפני שעה. ההתראות מבוססות על ממוצע רבע השעה, כדי שקפיצה רגעית לא תקפיץ התראה. נתונים לא מבוקרים מהמשרד להגנת הסביבה.</div></div>
 
   <div class="card" id="alerts" data-tab="alerts"><h2>🔔 התראות לטלפון</h2>
-    <div class="mute" style="margin-bottom:12px">חינם, בלי הרשמה ובלי מספר טלפון. לוקח כ-2 דקות.</div>
+    <div class="mute" style="margin-bottom:12px">בלי הרשמה ובלי מספר טלפון. לוקח כ-2 דקות.</div>
 
     <div class="step"><div class="sn">1</div><div class="sb"><b>מתקינים את האפליקציה ntfy</b>
       <div class="sbtn"><a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank">📱 אייפון</a>
@@ -550,7 +550,7 @@ function makeNightCard() {
   x.font = font(500, 34); x.fillStyle = "#1d2321";
   if (line2) x.fillText(line2, W - 100, 860);
   x.font = font(400, 28); x.fillStyle = "#6b7370";
-  x.fillText("נתוני ניידת המשרד להגנת הסביבה · מיזם קהילתי", W - 100, 935);
+  x.fillText("מיזם שכונתי של תושבי שוהם · נתוני ניידת המשרד להגנת הסביבה", W - 100, 935);
   x.textAlign = "left"; x.fillStyle = "#2e8b57"; x.font = font(600, 30); x.fillText("yonifal.github.io/shoham-air", 100, 990);
   const text = (smoke ? `ליל אמש בהדרים: ${smoke} שעות עשן, שיא בנזן ${peak.v}.` : `ליל אמש בהדרים עבר נקי (שיא בנזן ${peak.v}).`) +
     " תחזית עשן ומצב בזמן אמת: https://yonifal.github.io/shoham-air/";
@@ -586,7 +586,7 @@ function makeForecastCard() {
   if (tm) { x.fillStyle = "#4b5350"; x.font = font(400, 34); x.fillText(`מחר בלילה (מבט מוקדם): ${tm.label}`, W - 100, 790); }
   if (n.official) { x.fillStyle = "#6b7370"; x.font = font(400, 30); x.fillText(`תחזית רשמית מ-${n.official.issued} · 5 מודלי מזג אוויר`, W - 100, 845); }
   x.font = font(400, 28); x.fillStyle = "#6b7370";
-  x.fillText("תחזית, לא ודאות · התראה בזמן אמת מהניידת באתר · מיזם קהילתי", W - 100, 935);
+  x.fillText("תחזית, לא ודאות · מיזם שכונתי של תושבי שוהם", W - 100, 935);
   x.textAlign = "left"; x.fillStyle = "#2e8b57"; x.font = font(600, 30); x.fillText("yonifal.github.io/shoham-air", 100, 990);
   const text = `תחזית העשן להלילה בהדרים: ${n.label}${win ? " " + win : ""}. ${tip}. מצב בזמן אמת והתראות: https://yonifal.github.io/shoham-air/`;
   return { canvas: c, text };
@@ -645,10 +645,10 @@ function makeNowCard() {
   x.fillStyle = "#fff"; x.textAlign = "right";
   x.font = font(800, 54); x.fillText("איך האוויר אצלכם?", W - 80, 1050);
   x.font = font(500, 36); x.fillText("מצב בזמן אמת, תחזית ללילה", W - 80, 1110);
-  x.fillText("והתראות לטלפון, בחינם", W - 80, 1158);
+  x.fillText("והתראות לטלפון", W - 80, 1158);
   x.font = font(700, 38); x.fillText("yonifal.github.io/shoham-air", W - 80, 1235);
   x.font = font(400, 26); x.fillStyle = "rgba(255,255,255,.85)";
-  x.fillText("נתוני ניידת המשרד להגנת הסביבה · מיזם קהילתי", W - 80, 1290);
+  x.fillText("מיזם שכונתי של תושבי שוהם · נתוני ניידת המשרד להגנת הסביבה", W - 80, 1290);
   const text = `${HEAD[st]} בהדרים (${t.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}): בנזן ${bz}` +
     (times >= 2 ? `, פי ${times} מהרגיל` : "") + `. ${TIP[st]}.\nאיך האוויר אצלכם עכשיו? שמרו את הקישור 👇\nhttps://yonifal.github.io/shoham-air/`;
   return { canvas: c, text };
