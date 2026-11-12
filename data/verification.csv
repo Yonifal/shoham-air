@@ -2,3 +2,4 @@ night,forecast,prob,issued,smoke_hours,bz_max,peak,bad,outcome,note
 2026-11-08,high,0.62,15:34,0,0.54,02:00,False,false_alarm,מערכת ישנה (מודל יחיד)
 2026-11-09,medium,0.34,15:08,9,4.57,04:00,True,hit,
 2026-11-10,uncertain,0.51,15:15,10,2.9,22:00,True,open,
+2026-11-11,high,0.99,15:04,11,2.55,00:00,True,hit,
