@@ -100,6 +100,10 @@
   <div class="card now" id="now" data-tab="now"><div class="dot" style="background:#ccc"></div><div><div class="big">טוען…</div></div></div>
 
 
+  <div class="card" data-tab="now" style="padding:12px 16px">
+    <button class="big" id="sharenow" style="margin:0">📤 שתפו את מצב האוויר עכשיו</button>
+    <div class="legend" style="text-align:center">תמונה מוכנה לוואטסאפ, עם קישור וקוד QR לאתר</div></div>
+
   <div class="card" data-tab="now"><h2>מדדים בזמן אמת: ניידת הדרים</h2>
     <div class="metrics" id="metrics"><div class="tile wind" id="windtile"><div class="tn">רוח עכשיו</div><div class="tv">…</div></div></div>
     <div class="legend" id="mage"></div>
@@ -147,7 +151,7 @@
     <div class="legend" id="fupd"></div></div>
 
   <div class="card" id="share" data-tab="forecast" style="display:none"><h2>📤 שתפו בוואטסאפ</h2>
-    <div class="seg" id="sharetabs"><button data-k="fc" class="on">התחזית להלילה</button><button data-k="night">הלילה שעבר</button></div>
+    <div class="seg" id="sharetabs"><button data-k="now">עכשיו</button><button data-k="fc" class="on">התחזית להלילה</button><button data-k="night">הלילה שעבר</button></div>
     <img id="shareimg" alt="כרטיס סיכום הלילה" style="width:100%;border-radius:12px;border:1px solid var(--grid)">
     <div style="display:flex;gap:8px;margin-top:10px">
       <button id="sharebtn" class="big" style="margin:0">שתפו בוואטסאפ</button>
@@ -192,6 +196,7 @@
   <a href="#report" data-go="report"><span>👃</span>דיווח</a>
   <a href="#info" data-go="info"><span>ℹ️</span>מידע</a>
 </nav>
+<script src="qrcode.js"></script>
 <script>
 const COL = { clean:"var(--green)", elevated:"#d9b33a", smoke:"var(--orange)", strong:"var(--red)", heavy:"#8e1f17" };
 const TXT = { clean:"האוויר נקי עכשיו", elevated:"בנזן מעט מעל הרגיל", smoke:"יש עשן באוויר עכשיו",
@@ -373,11 +378,13 @@ function renderAge() {
 }
 
 // ---- wind right now (Open-Meteo, straight from the browser) ----
-const SRC_FROM = [75, 170];  // wind FROM this sector carries smoke from Na'alin/Budrus/Shuqba
+const SRC_FROM = [75, 170];
+let WIND = null;  // wind FROM this sector carries smoke from Na'alin/Budrus/Shuqba
 function loadWind() {
   fetch("https://api.open-meteo.com/v1/forecast?latitude=31.995&longitude=34.955&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=boundary_layer_height&forecast_days=1&timezone=Asia%2FJerusalem")
     .then(r => r.json()).then(W => {
       const c = W.current, dir = c.wind_direction_10m, kmh = Math.round(c.wind_speed_10m);
+      WIND = { dir, kmh, fromSrc: dir >= SRC_FROM[0] && dir <= SRC_FROM[1] };
       const hi = W.hourly.time.findIndex(t => t >= c.time.slice(0, 13)); const blh = W.hourly.boundary_layer_height[Math.max(0, hi)];
       const fromSrc = dir >= SRC_FROM[0] && dir <= SRC_FROM[1];
       const names = ["צפון", "צפון-מזרח", "מזרח", "דרום-מזרח", "דרום", "דרום-מערב", "מערב", "צפון-מערב"];
@@ -585,15 +592,90 @@ function makeForecastCard() {
   return { canvas: c, text };
 }
 
+
+function qrDraw(x, text, px, py, size) {
+  if (typeof qrcode !== "function") return;
+  const q = qrcode(0, "M"); q.addData(text); q.make();
+  const n = q.getModuleCount(), cell = size / n;
+  x.fillStyle = "#fff"; x.fillRect(px - 12, py - 12, size + 24, size + 24);
+  x.fillStyle = "#1d2321";
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) x.fillRect(px + c * cell, py + r * cell, Math.ceil(cell), Math.ceil(cell));
+}
+function makeNowCard() {
+  if (!LIVE || !LIVE.metrics || !LIVE.metrics.Benzene) return null;
+  const L = LIVE, bz = L.metrics.Benzene.last ?? L.metrics.Benzene.v;
+  const pm = L.metrics["PM2.5"] ? (L.metrics["PM2.5"].last ?? L.metrics["PM2.5"].v) : null;
+  const st = L.status || "clean";
+  const BG = { clean: "#2e8b57", elevated: "#c99a1e", smoke: "#e08a1e", strong: "#c8392f", heavy: "#8e1f17" };
+  const HEAD = { clean: "האוויר נקי עכשיו", elevated: "בנזן מעט מעל הרגיל", smoke: "יש עשן באוויר עכשיו",
+                 strong: "עשן משמעותי עכשיו", heavy: "עשן כבד עכשיו" };
+  const TIP = { clean: "אפשר לאוורר 🪟", elevated: "שווה לעקוב", smoke: "מומלץ לסגור חלונות",
+                strong: "סגרו חלונות והפעילו מטהר", heavy: "סגרו חלונות, הפעילו מטהר והימנעו מיציאה" };
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d"); x.direction = "rtl";
+  const font = (w, px) => `${w} ${px}px system-ui, -apple-system, "Segoe UI", Arial, sans-serif`;
+  // full-bleed status colour
+  x.fillStyle = BG[st]; x.fillRect(0, 0, W, H);
+  x.fillStyle = "rgba(255,255,255,.14)"; x.beginPath(); x.arc(W - 120, 170, 260, 0, 7); x.fill();
+  x.fillStyle = "rgba(255,255,255,.08)"; x.beginPath(); x.arc(140, 560, 200, 0, 7); x.fill();
+  const t = new Date(L.time.replace(" ", "T") + "+02:00");
+  x.textAlign = "right"; x.fillStyle = "rgba(255,255,255,.9)"; x.font = font(600, 40);
+  x.fillText("🌬️ אוויר בשוהם · שכונת הדרים", W - 80, 120);
+  x.font = font(400, 34);
+  x.fillText(t.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "numeric" }) + " · " +
+             t.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }), W - 80, 175);
+  x.fillStyle = "#fff"; x.font = font(800, 96); x.fillText(HEAD[st], W - 80, 330);
+  x.font = font(500, 46); x.fillText(TIP[st], W - 80, 405);
+  // white panel with numbers
+  x.fillStyle = "#fff"; x.beginPath(); x.roundRect(60, 470, W - 120, 470, 40); x.fill();
+  x.fillStyle = "#6b7370"; x.font = font(500, 34); x.fillText("בנזן (סמן לשריפת פלסטיק)", W - 120, 545);
+  x.fillStyle = "#1d2321"; x.font = font(800, 150);
+  x.fillText(String(bz), W - 120, 700);
+  x.fillStyle = BG[st]; x.font = font(700, 44);
+  const times = Math.round(bz / 0.17);
+  x.fillText(times >= 2 ? `פי ${times} מהרגיל בשכונה` : "ברמה הרגילה", W - 120, 770);
+  x.fillStyle = "#6b7370"; x.font = font(400, 34);
+  const bits = [];
+  if (pm != null) bits.push(`PM2.5: ${pm}`);
+  if (WIND) bits.push(`רוח ${WIND.kmh} קמ"ש ${WIND.fromSrc ? "מכיוון אתרי השריפה" : "לא מכיוון אתרי השריפה"}`);
+  x.fillText(bits.join(" · "), W - 120, 840);
+  x.font = font(400, 28); x.fillText('מק"ג/מ"ק · רקע רגיל: כ-0.17 · מ-1: ריח עשן', W - 120, 895);
+  // call to action + QR
+  qrDraw(x, "https://yonifal.github.io/shoham-air/", 90, 1000, 230);
+  x.fillStyle = "#fff"; x.textAlign = "right";
+  x.font = font(800, 54); x.fillText("איך האוויר אצלכם?", W - 80, 1050);
+  x.font = font(500, 36); x.fillText("מצב בזמן אמת, תחזית ללילה", W - 80, 1110);
+  x.fillText("והתראות לטלפון, בחינם", W - 80, 1158);
+  x.font = font(700, 38); x.fillText("yonifal.github.io/shoham-air", W - 80, 1235);
+  x.font = font(400, 26); x.fillStyle = "rgba(255,255,255,.85)";
+  x.fillText("נתוני ניידת המשרד להגנת הסביבה · מיזם קהילתי", W - 80, 1290);
+  const text = `${HEAD[st]} בהדרים (${t.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}): בנזן ${bz}` +
+    (times >= 2 ? `, פי ${times} מהרגיל` : "") + `. ${TIP[st]}.\nאיך האוויר אצלכם עכשיו? שמרו את הקישור 👇\nhttps://yonifal.github.io/shoham-air/`;
+  return { canvas: c, text };
+}
+function shareCanvas(card, msgEl) {
+  card.canvas.toBlob(async b => {
+    const f = new File([b], "shoham-air.png", { type: "image/png" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: card.text }); return; }
+    } catch (e) { if (e.name === "AbortError") return; }
+    const a = document.createElement("a"); a.href = card.canvas.toDataURL("image/png"); a.download = "shoham-air.png"; a.click();
+    window.open("https://wa.me/?text=" + encodeURIComponent(card.text), "_blank");
+    if (msgEl) msgEl.textContent = "התמונה נשמרה ונפתח וואטסאפ עם הטקסט. צרפו את התמונה מהגלריה.";
+  }, "image/png");
+}
+document.getElementById("sharenow").onclick = () => { const c = makeNowCard(); if (c) shareCanvas(c); };
+
 let SHARE_K = new Date().getHours() < 12 ? "night" : "fc";
 function buildShare() {
-  const cards = { fc: makeForecastCard(), night: makeNightCard() };
+  const cards = { now: makeNowCard(), fc: makeForecastCard(), night: makeNightCard() };
+  if (!buildShare.touched && LIVE && LIVE.status && !["clean", "elevated"].includes(LIVE.status)) SHARE_K = "now";
   if (!cards.fc && !cards.night) return;
   if (!cards[SHARE_K]) SHARE_K = cards.fc ? "fc" : "night";
   document.querySelectorAll("#sharetabs button").forEach(b => {
     b.classList.toggle("on", b.dataset.k === SHARE_K);
     b.style.display = cards[b.dataset.k] ? "" : "none";
-    b.onclick = () => { SHARE_K = b.dataset.k; buildShare(); };
+    b.onclick = () => { SHARE_K = b.dataset.k; buildShare.touched = true; buildShare(); };
   });
   const { canvas: c, text } = cards[SHARE_K];
   const url = c.toDataURL("image/png");
