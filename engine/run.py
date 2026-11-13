@@ -77,6 +77,18 @@ def cmd_live():
                         (v.index > v.index[-1] - pd.Timedelta(minutes=75))]
                 metrics[k] = {"v": round(cur, 2), "last": round(float(v.iloc[-1]), 2),
                               "prev": None if ago.empty else round(float(ago.mean()), 2)}
+    # 30-day history for the long chart: hourly values + one summary row per night
+    h30 = st[st.index >= cur_hour - pd.Timedelta(days=30)]
+    nights = model.night_labels(h30, BENZENE_SMOKE)
+    _save("history.json", {
+        "hourly": [{"t": t.strftime("%Y-%m-%d %H:%M"),
+                    "bz": None if pd.isna(r.Benzene) else round(float(r.Benzene), 2),
+                    "pm": None if pd.isna(r["PM2.5"]) else round(float(r["PM2.5"]), 1)}
+                   for t, r in h30.iterrows()],
+        "nights": [{"night": str(n.date()), "smoke_hours": int(r.smoke_hours), "bz_max": round(float(r.bz_max), 2),
+                    "hours": int(r.n)} for n, r in nights.iterrows()],
+        "updated": datetime.now(IL).isoformat(timespec="minutes"),
+    })
     _save("live.json", {
         "metrics": metrics,
         "north": north,
