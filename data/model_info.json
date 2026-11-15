@@ -1,11 +1,11 @@
 {
  "smoke": {
-  "nights": 325,
-  "bad_nights": 240
+  "nights": 327,
+  "bad_nights": 241
  },
  "strong": {
-  "nights": 325,
-  "bad_nights": 114
+  "nights": 327,
+  "bad_nights": 115
  },
- "trained_until": "2026-11-07"
+ "trained_until": "2026-11-09"
 }
