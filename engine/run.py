@@ -170,9 +170,12 @@ def cmd_forecast():
         if night == today:  # smoke already measured tonight beats the forecast for the start time
             try:
                 stn = pd.read_csv(DATA / "station.csv", index_col=0, parse_dates=True).Benzene
-                seen = stn[(stn.index >= night + pd.Timedelta(hours=16)) & (stn > BENZENE_SMOKE)]
-                if len(seen):
-                    first = seen.index[0].strftime("%H:%M")
+                ev = stn[stn.index >= night + pd.Timedelta(hours=17)]
+                hot = (ev > BENZENE_SMOKE).astype(int)
+                # sustained: this hour and the next one above the line (a lone afternoon blip doesn't count)
+                sus = hot[(hot == 1) & (hot.shift(-1).fillna(hot) == 1)]
+                if len(sus):
+                    first = sus.index[0].strftime("%H:%M")
                     win = win or {"start": first, "end": "08:00", "peak": None}
                     if first < win["start"] or win["start"] < "12:00":
                         win["start"] = first
