@@ -113,7 +113,8 @@ def cmd_live():
             "smoke": f"🟠 יש עשן בהדרים: בנזן {bz:.2f} מק\"ג/מ\"ק. מומלץ לסגור חלונות.",
             "strong": f"🔴 עשן משמעותי בהדרים: בנזן {bz:.2f}. סגרו חלונות.",
             "heavy": f"🔴 זיהום כבד בהדרים: בנזן {bz:.1f}. סגרו חלונות, הפעילו מטהר.",
-            "clean": "🟢 האוויר בהדרים חזר לנקי. אפשר לאוורר.",
+            "clean": ("🟢 האוויר בהדרים חזר לנקי. אפשר לאוורר." if 9 <= raw.index[-1].hour < 17 else
+                      "🟡 ירידה בבנזן בהדרים. בלילה הזיהום מגיע בגלים, עדיף להשאיר סגור עד הבוקר."),
         }[status]
         # avoid flapping: announce "clean" only after a full clean hour
         if msg and (status not in ("clean", "elevated") or (raw.tail(12).Benzene < BENZENE_SMOKE).all()):
@@ -150,8 +151,8 @@ def cmd_forecast():
     probs = pd.DataFrame({m: model.predict(w) for m, w in ws.items()})
     strong = pd.DataFrame({m: model.predict(w, strong=True) for m, w in ws.items()}).mean(axis=1)
     mean, lo, hi = probs.mean(axis=1), probs.min(axis=1), probs.max(axis=1)
-    # hourly rule for the window: share of models flagging the hour
-    risk = pd.concat({m: model.hourly_risk(w) for m, w in ws.items()}, axis=1).mean(axis=1)
+    # hourly smoke probability (hourly model, mean over weather models) -> start / end / peak of the smoke window
+    risk = pd.concat({m: model.predict_hourly(w) for m, w in ws.items()}, axis=1).mean(axis=1)
     now = datetime.now(IL)
     today = pd.Timestamp(now.date())
     s = _state()
@@ -165,19 +166,18 @@ def cmd_forecast():
         m_, lo_, hi_ = float(mean[night]), float(lo[night]), float(hi[night])
         lvl = classify(m_, lo_, hi_, prev_levels.get(key_n))
         n_agree = int((probs.loc[night] >= 0.25).sum()) if lvl != "low" else int((probs.loc[night] < 0.25).sum())
-        hrs = risk[(risk.index >= night + pd.Timedelta(hours=18)) & (risk.index < night + pd.Timedelta(hours=31))]
-        on = hrs[hrs >= 0.5].index
+        win = model.smoke_window(risk, night)
         entry = {"night": key_n, "prob": round(m_, 2), "range": [round(lo_, 2), round(hi_, 2)],
                  "level": lvl, "label": LABELS[lvl], "models": {weather.MODELS[m]: round(float(v), 2)
                                                                  for m, v in probs.loc[night].items()},
                  "agree": [n_agree, len(probs.columns)], "early": night > today,
                  "strong": round(float(strong.get(night, 0)), 2),
-                 "window": [on.min().strftime("%H:%M"), on.max().strftime("%H:%M")] if len(on) else None}
+                 "window": [win["start"], win["end"]] if win else None, "peak": win["peak"] if win else None}
         # after 15:00 tonight's forecast is "official": keep it unless the models moved a lot
         off = official.get(key_n)
         if off and night == today:
             if abs(m_ - off["prob"]) < UPDATE_DELTA or lvl == off["level"]:
-                entry.update(level=off["level"], label=LABELS[off["level"]], window=off.get("window"))
+                entry.update(level=off["level"], label=LABELS[off["level"]])  # the level is locked; the hours stay fresh
                 entry["official"] = off
             else:
                 entry["official"] = off
@@ -226,7 +226,7 @@ def cmd_forecast():
 def cmd_train():
     st = pd.read_csv(DATA / "station.csv", index_col=0, parse_dates=True)
     w = weather.history(str(st.index.min().date()), str((datetime.now(IL) - timedelta(days=6)).date()))
-    print(model.train(st, w))
+    print(model.train(st, w), "hourly rows:", model.train_hourly(st, w))
 
 
 def cmd_verify():

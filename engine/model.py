@@ -73,3 +73,47 @@ def predict(w: pd.DataFrame, strong: bool = False) -> pd.Series:
     f = night_features(w)
     f = f[f.hours >= 10]
     return pd.Series(clf.predict_proba(f[FEATURES])[:, 1], index=f.index)
+
+
+# ---- hourly model: P(benzene > 1) for each hour, used for the smoke window (start/end/peak) ----
+HOURLY_PATH = DATA / "model_hourly.joblib"
+HFEATS = ["u", "v", "ws", "blh", "rh", "temp", "prcp", "hs", "hc", "blh3", "ws3", "ds", "dc"]
+
+
+def hourly_features(w: pd.DataFrame) -> pd.DataFrame:
+    f = pd.DataFrame(index=w.index)
+    r = np.deg2rad(w.wd)
+    f["u"], f["v"] = -w.ws * np.sin(r), -w.ws * np.cos(r)
+    f["ws"], f["blh"], f["rh"], f["temp"], f["prcp"] = w.ws, w.blh, w.rh, w.temp, w.prcp
+    f["hs"], f["hc"] = np.sin(2 * np.pi * w.index.hour / 24), np.cos(2 * np.pi * w.index.hour / 24)
+    f["blh3"] = w.blh.rolling(3, min_periods=1).mean()
+    f["ws3"] = w.ws.rolling(3, min_periods=1).mean()
+    doy = w.index.dayofyear
+    f["ds"], f["dc"] = np.sin(2 * np.pi * doy / 365), np.cos(2 * np.pi * doy / 365)
+    return f
+
+
+def train_hourly(st: pd.DataFrame, w: pd.DataFrame):
+    y = (st.Benzene > BENZENE_SMOKE)[st.Benzene.notna()]
+    X = hourly_features(w).join(y.rename("y"), how="inner")
+    clf = HistGradientBoostingClassifier(max_depth=4, learning_rate=0.05, max_iter=300,
+                                         min_samples_leaf=30, random_state=0)
+    clf.fit(X[HFEATS], X.y.astype(int))
+    joblib.dump(clf, HOURLY_PATH)
+    return int(len(X))
+
+
+def predict_hourly(w: pd.DataFrame) -> pd.Series:
+    clf = joblib.load(HOURLY_PATH)
+    f = hourly_features(w).dropna(subset=["ws"])
+    return pd.Series(clf.predict_proba(f[HFEATS])[:, 1], index=f.index)
+
+
+def smoke_window(p: pd.Series, night: pd.Timestamp, thr: float = 0.5):
+    """First and last hour with P(smoke) >= thr between 16:00 on the night and 10:00 next morning, plus the peak."""
+    seg = p[(p.index >= night + pd.Timedelta(hours=16)) & (p.index <= night + pd.Timedelta(hours=34))]
+    on = seg[seg >= thr]
+    if on.empty:
+        return None
+    return {"start": on.index[0].strftime("%H:%M"), "end": (on.index[-1] + pd.Timedelta(hours=1)).strftime("%H:%M"),
+            "peak": seg.idxmax().strftime("%H:%M")}

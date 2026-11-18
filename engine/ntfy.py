@@ -44,10 +44,17 @@ def check_thresholds(raw, state: dict) -> dict:
                     + ("מומלץ לסגור חלונות." if heavy else "שווה לעקוב."),
                     priority=4 if heavy else 3, tags=["warning"])
             state[key] = True
-        elif above and len(v) >= 6 and float(v.tail(6).max()) < thr * 0.8:  # 30 min clearly below
+        elif above and len(v) >= 12 and float(v.tail(12).max()) < thr * 0.7:  # a full hour clearly below
+            hour = v.index[-1].hour
+            night = hour >= 17 or hour < 9
+            if night:
+                tail = ("ירידה זמנית: בלילות כאלה הזיהום מגיע בגלים, והנתונים מהניידת מגיעים באיחור. "
+                        "עדיף להשאיר חלונות סגורים עד הבוקר.")
+            else:
+                tail = "אפשר לאוורר." if col == "Benzene" else ""
             publish(key, f"{name} ירד מתחת ל-{thr:g} בהדרים",
-                    f"{name} עכשיו {fmt(last)} מק\"ג/מ\"ק. " + ("אפשר לאוורר." if col == "Benzene" else ""),
-                    priority=2, tags=["white_check_mark"])
+                    f"{name} עכשיו {fmt(last)} מק\"ג/מ\"ק. " + tail,
+                    priority=2, tags=["arrow_down"] if night else ["white_check_mark"])
             state[key] = False
     return state
 
