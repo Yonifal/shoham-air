@@ -1,11 +1,11 @@
 {
  "last": {
-  "night": "2026-11-16",
+  "night": "2026-11-17",
   "forecast": "high",
-  "prob": "0.81",
-  "issued": "15:59",
-  "smoke_hours": 10,
-  "bz_max": 3.31,
+  "prob": "0.73",
+  "issued": "15:35",
+  "smoke_hours": 11,
+  "bz_max": 2.71,
   "peak": "23:00",
   "bad": true,
   "outcome": "hit",
@@ -14,9 +14,9 @@
   "forecast_label": "עשן צפוי"
  },
  "stats": {
-  "nights": 9,
-  "scored": 8,
-  "hits": 7,
+  "nights": 10,
+  "scored": 9,
+  "hits": 8,
   "false_alarms": 1,
   "misses": 0,
   "open": 1
@@ -123,13 +123,25 @@
    "forecast": "high",
    "prob": "0.81",
    "issued": "15:59",
-   "smoke_hours": 10,
-   "bz_max": 3.31,
+   "smoke_hours": "10",
+   "bz_max": "3.31",
+   "peak": "23:00",
+   "bad": "True",
+   "outcome": "hit",
+   "note": NaN
+  },
+  {
+   "night": "2026-11-17",
+   "forecast": "high",
+   "prob": "0.73",
+   "issued": "15:35",
+   "smoke_hours": 11,
+   "bz_max": 2.71,
    "peak": "23:00",
    "bad": true,
    "outcome": "hit",
    "note": NaN
   }
  ],
- "updated": "2026-11-17T07:04+02:00"
+ "updated": "2026-11-18T07:02+02:00"
 }
