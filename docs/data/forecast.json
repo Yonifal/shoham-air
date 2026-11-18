@@ -21,11 +21,20 @@
     5
    ],
    "early": false,
-   "strong": 0.23,
+   "strong": 0.24,
    "window": [
     "22:00",
     "06:00"
    ],
+   "official": {
+    "level": "high",
+    "prob": 0.98,
+    "window": [
+     "22:00",
+     "06:00"
+    ],
+    "issued": "15:32"
+   },
    "rest": {
     "prob": 0.33,
     "level": "medium",
@@ -739,5 +748,5 @@
    "risk": 0.8
   }
  ],
- "updated": "2026-11-18T15:32+02:00"
+ "updated": "2026-11-18T16:33+02:00"
 }
