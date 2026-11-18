@@ -167,6 +167,17 @@ def cmd_forecast():
         lvl = classify(m_, lo_, hi_, prev_levels.get(key_n))
         n_agree = int((probs.loc[night] >= 0.25).sum()) if lvl != "low" else int((probs.loc[night] < 0.25).sum())
         win = model.smoke_window(risk, night)
+        if night == today:  # smoke already measured tonight beats the forecast for the start time
+            try:
+                stn = pd.read_csv(DATA / "station.csv", index_col=0, parse_dates=True).Benzene
+                seen = stn[(stn.index >= night + pd.Timedelta(hours=16)) & (stn > BENZENE_SMOKE)]
+                if len(seen):
+                    first = seen.index[0].strftime("%H:%M")
+                    win = win or {"start": first, "end": "08:00", "peak": None}
+                    if first < win["start"] or win["start"] < "12:00":
+                        win["start"] = first
+            except Exception as e:
+                print("measured-start failed:", e)
         entry = {"night": key_n, "prob": round(m_, 2), "range": [round(lo_, 2), round(hi_, 2)],
                  "level": lvl, "label": LABELS[lvl], "models": {weather.MODELS[m]: round(float(v), 2)
                                                                  for m, v in probs.loc[night].items()},

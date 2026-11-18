@@ -111,7 +111,7 @@ def predict_hourly(w: pd.DataFrame) -> pd.Series:
 
 def smoke_window(p: pd.Series, night: pd.Timestamp, thr: float = 0.5):
     """First and last hour with P(smoke) >= thr between 16:00 on the night and 10:00 next morning, plus the peak."""
-    seg = p[(p.index >= night + pd.Timedelta(hours=16)) & (p.index <= night + pd.Timedelta(hours=34))]
+    seg = p[(p.index >= night + pd.Timedelta(hours=16)) & (p.index <= night + pd.Timedelta(hours=32))]
     on = seg[seg >= thr]
     if on.empty:
         return None
