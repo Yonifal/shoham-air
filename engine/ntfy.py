@@ -44,7 +44,7 @@ def check_thresholds(raw, state: dict) -> dict:
                     + ("מומלץ לסגור חלונות." if heavy else "שווה לעקוב."),
                     priority=4 if heavy else 3, tags=["warning"])
             state[key] = True
-        elif above and len(v) >= 12 and float(v.tail(12).max()) < thr * 0.7:  # a full hour clearly below
+        elif above and len(v) >= 6 and float(v.tail(6).max()) < thr:  # 30 minutes (6 readings) below the line
             hour = v.index[-1].hour
             night = hour >= 17 or hour < 9
             if night:
