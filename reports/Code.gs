@@ -7,7 +7,7 @@
  * GET   ?days=7                  → JSON of recent reports (no personal data is stored)
  */
 const SHEET = "reports";
-const HOODS = ["הדרים","יעלים","כרמים","טללים","סחלבים","חמניות","גבעולים","ברושים","יובלים","רקפות","אחר"];
+const HOODS = ["הדרים","יעלים","כרמים","טללים","סחלבים","חמניות","גבעולים","ברושים","יובלים","רקפות","בית נחמיה","אחר"];
 
 function sheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();

@@ -94,7 +94,7 @@
   <div class="card hoodcard" data-tab="now forecast report"><label for="hood">השכונה שלי</label>
     <select id="hood"><option value="">בחרו שכונה…</option>
       <option>הדרים</option><option>יעלים</option><option>כרמים</option><option>טללים</option>
-      <option>סחלבים</option><option>חמניות</option><option>גבעולים</option><option>ברושים</option><option>יובלים</option><option>רקפות</option><option>אחר</option></select>
+      <option>סחלבים</option><option>חמניות</option><option>גבעולים</option><option>ברושים</option><option>יובלים</option><option>רקפות</option><option>בית נחמיה</option><option>אחר</option></select>
     <div class="legend" id="basis"></div></div>
 
   <div class="card now" id="now" data-tab="now"><div class="dot" style="background:#ccc"></div><div><div class="big">טוען…</div></div></div>
@@ -210,11 +210,14 @@ const dayName = d => { const t=new Date(); t.setHours(0,0,0,0); const x=new Date
 // ---- neighbourhood view ----
 let LIVE = null, FC = null;
 const HOOD = () => document.getElementById("hood").value;
-const isHadarim = h => !h || h === "הדרים";
+const NEAR_HADARIM = ["בית נחמיה"];   // no station there; the Hadarim unit (~1.5 km) is the nearest measurement
+const isHadarim = h => !h || h === "הדרים" || NEAR_HADARIM.includes(h);
 function renderBasis() {
   const h = HOOD();
   document.getElementById("basis").innerHTML = isHadarim(h)
-    ? "מדידה ישירה: ניידת המשרד להגנת הסביבה ברחוב האתרוג 60, שמודדת בנזן, הסימן המובהק לשריפת פלסטיק."
+    ? (NEAR_HADARIM.includes(h)
+      ? `<b>ב${h} אין תחנת מדידה.</b> הנתונים מהמדידה הכי קרובה: ניידת המשרד להגנת הסביבה בהדרים (האתרוג 60), כקילומטר וחצי מ${h}. העשן מגיע מאותו כיוון (מזרח), אבל הריכוז ב${h} יכול להיות שונה. הדיווחים שלכם מ${h} יעזרו לנו ללמוד את ההבדל.`
+      : "מדידה ישירה: ניידת המשרד להגנת הסביבה ברחוב האתרוג 60, שמודדת בנזן, הסימן המובהק לשריפת פלסטיק.")
     : `<b>ב${h} אין תחנת מדידה.</b> מה שמוצג ל${h} הוא הערכה לפי התחנה הקבועה במרכז-צפון שוהם (PM2.5 בלבד), לפי ניידת הדרים, ולפי מה שתושבי ${h} מדווחים. ככל שיהיו יותר דיווחים מ${h}, ההערכה תהיה מדויקת יותר.`;
   document.getElementById("rephood").innerHTML = h ? `מדווחים מ<b>${h}</b> (אפשר להחליף למעלה)` + (isHadarim(h) ? "" : `<br>ב${h} אין תחנת מדידה, כך שהדיווחים שלכם הם הדרך היחידה לדעת אם העשן מגיע ל${h}.`) : "בחרו שכונה למעלה כדי לדווח";
 }
@@ -233,6 +236,12 @@ function renderNow() {
     const bzNow = L.metrics && L.metrics.Benzene ? L.metrics.Benzene.v : L.benzene;
     if (L.status && L.status !== "clean") lines.unshift(`בנזן ${bzNow}: פי ${Math.round(bzNow / 0.17)} מהרקע הרגיל בהדרים (כ-0.17). מ-1 ומעלה מרגישים ריח עשן.`);
     if (L.status === "clean" && pm != null && pm >= 15) lines.unshift(`PM2.5 ${pm}: מעל המלצת ארגון הבריאות העולמי (15)${pm >= 37.5 ? " ומעל התקן הישראלי (37.5)" : ", מתחת לתקן הישראלי (37.5)"}. "עשן" נקבע לפי בנזן.`);
+    if (NEAR_HADARIM.includes(h)) {
+      txt += " (בהדרים, המדידה הקרובה)";
+      const rep = (L.reports || {})[h], wk = (L.reports_week || {})[h];
+      lines.unshift(`ב${h} אין תחנה. אלה נתוני הניידת בהדרים, כקילומטר וחצי מכם.`);
+      lines.push(rep ? `דיווחים מ${h} ב-3 השעות האחרונות: <b>${rep.n}</b>` : wk ? `השבוע: ${wk.n} דיווחים מ${h}` : `עוד אין דיווחים מ${h}. מריחים עשן? הדיווח שלכם יעזור לדעת אם אצלכם זה שונה מהדרים`);
+    }
   }
   else {
     const rep = (L.reports || {})[h], wk = (L.reports_week || {})[h];
@@ -274,7 +283,7 @@ function renderNights() {
     Object.entries(n0.models).map(([m, p]) => `<div class="mrow"><span>${m}</span><span class="mbar"><i style="width:${Math.round(p*100)}%"></i></span><b>${pct(p)}</b></div>`).join("") +
     `<div class="legend">סיכוי ללילה מזוהם (3 שעות ומעלה עם בנזן מעל 3) לפי תחזית הרוח של כל מודל.</div>` : "";
   document.getElementById("fbasis").innerHTML = (had
-    ? "התחזית משקללת 5 מודלי מזג אוויר (אירופי, גרמני, אמריקאי, צרפתי ובריטי) ומבוססת על הנתונים של ניידת הדרים. בבדיקה על השנה האחרונה היא זיהתה 93% מלילות העשן (בנזן מעל 1 לפחות 3 שעות)."
+    ? (NEAR_HADARIM.includes(h) ? `ל${h} אין תחנה, ולכן התחזית היא של הדרים, המדידה הקרובה (כקילומטר וחצי). ` : "") + "התחזית משקללת 5 מודלי מזג אוויר (אירופי, גרמני, אמריקאי, צרפתי ובריטי) ומבוססת על הנתונים של ניידת הדרים. בבדיקה על השנה האחרונה היא זיהתה 93% מלילות העשן (בנזן מעל 1 לפחות 3 שעות)."
     : `ל${h} אין תחזית משלה, כי אין בה מדידה. ההערכה נגזרת מהתחזית של הדרים ומההיסטוריה של התחנה הקבועה במרכז-צפון: בלילות שבהם הדרים הייתה מזוהמת, במרכז-צפון היה עשן ב-33% מהמקרים. כשהדרים הייתה נקייה, ב-13% בלבד. אחרי כמה שבועות של דיווחים מ${h}, נוכל לבנות ל${h} תחזית משלה.`) +
     "<br><b>איך להשתמש:</b> התחזית הרשמית יוצאת ב-15:00 ונשארת קבועה, אלא אם המודלים השתנו משמעותית. היא אומרת אם להתכונן. ההתראה בזמן אמת מהניידת אומרת אם העשן באמת הגיע.";
   document.getElementById("fupd").textContent = "חושב לאחרונה " + new Date(F.updated).toLocaleString("he-IL");
