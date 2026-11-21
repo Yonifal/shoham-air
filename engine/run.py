@@ -35,6 +35,7 @@ def level(p):
 
 def cmd_live():
     st, raw = station.update_archive(days_back=2)
+    raw = raw.mask(raw < 0)  # the unit sometimes reports negative values (sensor drift): treat as missing
     raw = raw.dropna(subset=["Benzene"])
     now15 = raw.tail(3)                       # last 15 minutes of 5-min readings
     bz = float(now15.Benzene.mean())

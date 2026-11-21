@@ -56,7 +56,7 @@ def update_archive(days_back: int = 2):
     if not old.empty:  # keep only whole-hour rows (cleans up any earlier 5-min rows)
         old = old[(old.index.minute == 0)]
     raw = fetch_raw(days_back)
-    new = hourly(raw)
+    new = hourly(raw.mask(raw < 0))
     allx = new.combine_first(old) if not old.empty else new  # fresh values win, gaps keep old ones
     allx = allx.dropna(how="all").sort_index().round(2)
     allx.to_csv(path)
