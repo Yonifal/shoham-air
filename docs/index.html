@@ -80,6 +80,12 @@
   .seg { display:flex; background:var(--bg); border-radius:12px; padding:3px; margin-bottom:10px; }
   .seg button { flex:1; border:0; background:transparent; padding:8px; border-radius:10px; font:inherit; font-size:14px; color:var(--mute); cursor:pointer; }
   .seg button.on { background:var(--card); color:var(--ink); font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .rt { width:100%; border-collapse:collapse; font-size:14px; margin-top:6px; }
+  .rt td { padding:8px 4px; border-top:1px solid var(--grid); }
+  .rt td.n { text-align:center; font-weight:700; width:52px; }
+  .rt .lv { display:inline-block; width:10px; height:10px; border-radius:50%; margin-left:6px; vertical-align:0; }
+  .rt tr.me td { background:var(--bg); }
+  .feed { font-size:13px; color:var(--mute); margin-top:12px; line-height:1.8; }
   .keys { display:flex; gap:14px; font-size:12px; color:var(--mute); margin-top:6px; flex-wrap:wrap; }
   .keys i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-left:4px; vertical-align:-1px; }
   .legend { font-size:12px; color:var(--mute); margin-top:6px; }
@@ -140,6 +146,13 @@
     </div>
     <div id="repmsg" class="mute"></div>
     <div id="replist" class="legend"></div>
+  </div>
+
+  <div class="card" data-tab="report"><h2>מה מדווחים השכנים</h2>
+    <div class="seg" id="repwin"><button data-h="1" class="on">שעה אחרונה</button><button data-h="3">3 שעות</button><button data-h="24">24 שעות</button></div>
+    <div id="reptable"></div>
+    <div id="repfeed"></div>
+    <div class="legend" id="repupd"></div>
   </div>
 
   <div class="card" id="verify" style="display:none" data-tab="forecast"><h2>האם צדקנו אתמול?</h2>
@@ -340,7 +353,7 @@ loadVerify();
     document.querySelectorAll("#topics .cp[data-t]").forEach(b => b.onclick = () => copy(b.dataset.t, b));
   }).catch(() => {});
 })();
-function renderAll() { renderBasis(); renderNow(); renderNights(); }
+function renderAll() { renderBasis(); renderNow(); renderNights(); if (typeof renderReports === "function") renderReports(); }
 
 let TAB = "bz";
 document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
@@ -486,10 +499,54 @@ const REPORTS_URL = "https://script.google.com/macros/s/AKfycbzHwwyeOOYUARlirW-T
     btns.forEach(x => x.disabled = true); msg.textContent = "שולח…";
     fetch(REPORTS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ hood: sel.value, level: +b.dataset.l, note: "d:" + dev + "|h:" + sel.value }) })
-      .then(r => r.json()).then(j => { if (!j.ok) throw 0; ls.set("lastReport", Date.now()); lock(); })
+      .then(r => r.json()).then(j => { if (!j.ok) throw 0; ls.set("lastReport", Date.now()); lock(); setTimeout(loadReports, 1500); })
       .catch(() => { btns.forEach(x => x.disabled = false); msg.textContent = "השליחה נכשלה, נסו שוב."; });
   });
 })();
+
+// ---- neighbours' reports: read straight from the reports sheet (live), fall back to the 10-min summary ----
+let REP_RAW = null, REP_H = 1;
+const LVL = { 1: ["ריח קל", "#e8c35a"], 2: ["ריח חזק", "#e08a1e"], 3: ["קשה לנשום", "#c8392f"] };
+function loadReports() {
+  if (!REPORTS_URL) return;
+  fetch(REPORTS_URL + "?days=1").then(r => r.json()).then(j => {
+    REP_RAW = (j.reports || []).map(r => {
+      const m = String(r.note || "").match(/h:([^|]+)/);
+      return { t: new Date(r.t), hood: m && m[1] ? m[1] : r.hood, level: +r.level || 1 };
+    });
+    renderReports();
+  }).catch(() => renderReports());
+}
+function renderReports() {
+  const box = document.getElementById("reptable"), feed = document.getElementById("repfeed"), upd = document.getElementById("repupd");
+  document.querySelectorAll("#repwin button").forEach(b => b.classList.toggle("on", +b.dataset.h === REP_H));
+  const mine = document.getElementById("hood").value;
+  if (!REP_RAW) {   // fallback: 3-hour summary from live.json
+    const R = (LIVE && LIVE.reports) || {};
+    const e = Object.entries(R);
+    box.innerHTML = e.length ? `<table class="rt">${e.sort((a, b) => b[1].n - a[1].n).map(([h, v]) =>
+      `<tr class="${h === mine ? "me" : ""}"><td>${h}${v.confirmed ? " ✔" : ""}</td><td class="n">${v.n}</td></tr>`).join("")}</table>`
+      : `<div class="mute" style="margin-top:8px">אין דיווחים ב-3 השעות האחרונות.</div>`;
+    feed.innerHTML = ""; upd.textContent = "סיכום 3 השעות האחרונות, מתעדכן כל 10 דקות.";
+    return;
+  }
+  const since = Date.now() - REP_H * 3600e3, rows = REP_RAW.filter(r => r.t >= since);
+  const by = {};
+  rows.forEach(r => { (by[r.hood] = by[r.hood] || { n: 0, max: 0, last: 0 }); by[r.hood].n++; by[r.hood].max = Math.max(by[r.hood].max, r.level); by[r.hood].last = Math.max(by[r.hood].last, +r.t); });
+  const ent = Object.entries(by).sort((a, b) => b[1].n - a[1].n);
+  const ago = t => { const m = Math.round((Date.now() - t) / 60e3); return m < 60 ? `לפני ${m} דק'` : `לפני ${Math.round(m / 60)} ש'`; };
+  box.innerHTML = ent.length
+    ? `<table class="rt">` + ent.map(([h, v]) => `<tr class="${h === mine ? "me" : ""}"><td><span class="lv" style="background:${LVL[v.max][1]}"></span>${h}${h === mine ? " (אתם)" : ""}</td>
+        <td class="n">${v.n}</td><td class="mute" style="font-size:12px">${LVL[v.max][0]} · ${ago(v.last)}</td></tr>`).join("") + `</table>`
+    : `<div class="mute" style="margin-top:8px">אין דיווחים ${REP_H === 1 ? "בשעה האחרונה" : REP_H === 3 ? "ב-3 השעות האחרונות" : "ב-24 השעות האחרונות"}.</div>`;
+  const last = rows.slice().sort((a, b) => b.t - a.t).slice(0, 8);
+  feed.innerHTML = last.length ? `<div class="feed">${last.map(r =>
+    `<span class="lv" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${LVL[r.level][1]};margin-left:6px"></span>${r.t.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })} · ${r.hood} · ${LVL[r.level][0]}`).join("<br>")}</div>` : "";
+  upd.textContent = "בזמן אמת מגיליון הדיווחים · בלי פרטים אישיים · מתעדכן כל 2 דקות";
+}
+document.querySelectorAll("#repwin button").forEach(b => b.onclick = () => { REP_H = +b.dataset.h; renderReports(); });
+loadReports(); setInterval(loadReports, 2 * 60e3);
+
 function showReports(R) {
   const e = Object.entries(R || {}); if (!e.length) return;
   document.getElementById("replist").innerHTML = "דיווחים ב-3 השעות האחרונות: " +
