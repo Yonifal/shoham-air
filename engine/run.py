@@ -247,7 +247,7 @@ def cmd_train():
 def cmd_verify():
     def both(msg):
         notify.send(msg)
-        ntfy.forecast(msg)
+        ntfy.forecast(msg, ask_night=True)
     print(verify.run(send=both))
 
 

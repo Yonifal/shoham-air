@@ -20,9 +20,11 @@ URL = os.getenv("REPORTS_URL") or REPORTS_URL
 def sync(days: int = 30) -> pd.DataFrame:
     """Merge recent reports into data/reports.csv (times stored as UTC+2, like the station)."""
     path = DATA / "reports.csv"
-    cols = ["time", "hood", "level", "device"]
+    cols = ["time", "hood", "level", "device", "kind"]
     old = pd.read_csv(path) if path.exists() else pd.DataFrame(columns=cols)
     old["time"] = pd.to_datetime(old["time"])
+    if "kind" not in old:
+        old["kind"] = "now"
     if not URL:
         return old
     try:
@@ -38,6 +40,10 @@ def sync(days: int = 30) -> pd.DataFrame:
     # neighbourhoods added after the Apps Script was deployed arrive as "אחר" with the real name in the note
     h = new.note.astype(str).str.extract(r"h:([^|]+)", expand=False)
     new["hood"] = h.where(h.notna() & (h != ""), new.hood)
+    # "smell now" vs the morning question about last night ("|q:night|v:0..3", 0 = clean)
+    v = new.note.astype(str).str.extract(r"q:night\|v:(\d)", expand=False)
+    new["kind"] = v.notna().map({True: "night", False: "now"})
+    new["level"] = v.astype(float).where(v.notna(), new.level)
     new = new[cols]
     allr = pd.concat([old, new])
     allr["time"] = pd.to_datetime(allr.time)
@@ -49,6 +55,7 @@ def sync(days: int = 30) -> pd.DataFrame:
 def device_reliability(allr: pd.DataFrame, station: pd.DataFrame) -> pd.Series:
     """Share of a device's Hadarim reports made while benzene was elevated (≥ half the smoke threshold).
     Devices without Hadarim reports get a neutral 0.5."""
+    allr = allr[allr.get("kind", "now").fillna("now") == "now"] if "kind" in allr else allr
     h = allr[allr.hood == "הדרים"].copy()
     if h.empty:
         return pd.Series(dtype=float)
@@ -61,6 +68,7 @@ def device_reliability(allr: pd.DataFrame, station: pd.DataFrame) -> pd.Series:
 
 def recent_summary(allr: pd.DataFrame, now: pd.Timestamp, hours: int = 3) -> dict:
     """Per neighbourhood: reports in the last few hours, distinct devices, and whether it is confirmed."""
+    allr = allr[allr.get("kind", "now").fillna("now") == "now"] if "kind" in allr else allr
     if allr.empty:
         return {}
     r = allr[allr.time >= now - pd.Timedelta(hours=hours)]
@@ -77,6 +85,7 @@ def recent_summary(allr: pd.DataFrame, now: pd.Timestamp, hours: int = 3) -> dic
 
 def week_summary(allr: pd.DataFrame, now: pd.Timestamp, days: int = 7) -> dict:
     """Per neighbourhood over the last week: number of reports, distinct devices, last report time."""
+    allr = allr[allr.get("kind", "now").fillna("now") == "now"] if "kind" in allr else allr
     if allr.empty:
         return {}
     r = allr[allr.time >= now - pd.Timedelta(days=days)]

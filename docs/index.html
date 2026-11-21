@@ -106,6 +106,19 @@
   <div class="card now" id="now" data-tab="now"><div class="dot" style="background:#ccc"></div><div><div class="big">טוען…</div></div></div>
 
 
+  <div class="card" data-tab="now" id="morningq" style="display:none">
+    <h2>☀️ איך היה הלילה אצלכם?</h2>
+    <div class="mute" style="margin-bottom:8px">לחיצה אחת. זה עוזר לבדוק את התחזית ולהבין את ההבדלים בין השכונות.</div>
+    <div class="lv" style="grid-template-columns:1fr 1fr"><button data-v="0">🟢 נקי</button><button data-v="1">🟡 ריח קל</button>
+      <button data-v="2">🟠 ריח חזק</button><button data-v="3">🔴 קשה לנשום</button></div>
+    <div class="mute repmsg"></div></div>
+
+  <div class="card" data-tab="now" id="quickrep">
+    <h2>👃 מריחים עשן עכשיו?</h2>
+    <div class="mute" id="quickwhy" style="margin-bottom:8px">דיווח בלחיצה אחת, בלי פרטים אישיים.</div>
+    <div class="lv"><button data-l="1">🟡 ריח קל</button><button data-l="2">🟠 ריח חזק</button><button data-l="3">🔴 קשה לנשום</button></div>
+    <div class="mute repmsg"></div></div>
+
   <div class="card" data-tab="now" style="padding:12px 16px">
     <button class="big" id="sharenow" style="margin:0">📤 שתפו את מצב האוויר עכשיו</button>
     <div class="legend" style="text-align:center">תמונה מוכנה לוואטסאפ, עם קישור וקוד QR לאתר</div></div>
@@ -144,7 +157,7 @@
     <div class="lv">
       <button data-l="1">🟡 ריח קל</button><button data-l="2">🟠 ריח חזק</button><button data-l="3">🔴 קשה לנשום</button>
     </div>
-    <div id="repmsg" class="mute"></div>
+    <div id="repmsg" class="mute repmsg"></div>
     <div id="replist" class="legend"></div>
   </div>
 
@@ -271,6 +284,14 @@ function renderNow() {
       wk ? `השבוע: ${wk.n} דיווחים מ${h} · האחרון ${ago(wk.last)}`
          : `עוד לא היו דיווחים מ${h} השבוע. מריחים עשן? הדיווח שלכם הוא המדידה היחידה מ${h}`,
       northLine, hadarimLine + " (לייחוס)"];
+  }
+  const qr = document.getElementById("quickrep");
+  if (qr) {
+    const smoky = L.status && !["clean", "elevated"].includes(L.status);
+    qr.style.border = smoky ? "2px solid var(--orange)" : "";
+    document.getElementById("quickwhy").textContent = isHadarim(h) && !NEAR_HADARIM.includes(h)
+      ? "דיווח בלחיצה אחת, בלי פרטים אישיים. הדיווחים עוזרים לדעת איפה עוד בשוהם מרגישים את העשן."
+      : `ב${h || "השכונה שלכם"} אין תחנת מדידה, אז הדיווח שלכם הוא המדידה היחידה משם. לחיצה אחת, בלי פרטים אישיים.`;
   }
   document.getElementById("now").innerHTML = `<div class="dot" style="background:${col}"></div><div><div class="big">${txt}</div>` +
     lines.map(l => `<div class="mute">${l}</div>`).join("") + `</div>`;
@@ -481,27 +502,45 @@ fetch("data/forecast.json?"+Date.now()).then(r=>r.json()).then(F=>{ FC = F; rend
 // ---- residents' smoke reports ----
 const REPORTS_URL = "https://script.google.com/macros/s/AKfycbzHwwyeOOYUARlirW-TghWBI7UMS-7Agdvi8SZ_wCMEan_Exriqc5IOzJ2_GiGblkVUSQ/exec";   // Apps Script web-app URL (reports/Code.gs)
 (function () {
-  const sel = document.getElementById("hood"), msg = document.getElementById("repmsg");
-  const btns = document.querySelectorAll(".lv button");
+  const sel = document.getElementById("hood");
   const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
                set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
   sel.value = ls.get("hood") || "";
   sel.onchange = () => { ls.set("hood", sel.value); renderAll(); };
   renderBasis();
-  if (!REPORTS_URL) { btns.forEach(b => b.disabled = true); msg.textContent = "הדיווחים ייפתחו בקרוב"; return; }
   // anonymous random device id: lets us weigh reports per device without any personal data
   let dev = ls.get("dev"); if (!dev) { dev = Math.random().toString(36).slice(2, 10); ls.set("dev", dev); }
-  const last = +ls.get("lastReport") || 0;
-  const lock = () => { btns.forEach(b => b.disabled = true); msg.textContent = "תודה! אפשר לדווח שוב בעוד חצי שעה."; };
-  if (Date.now() - last < 30 * 60e3) lock();
-  btns.forEach(b => b.onclick = () => {
-    if (!sel.value) { msg.textContent = "בחרו שכונה למעלה קודם 🙂"; sel.scrollIntoView({behavior:"smooth"}); sel.focus(); return; }
-    btns.forEach(x => x.disabled = true); msg.textContent = "שולח…";
-    fetch(REPORTS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ hood: sel.value, level: +b.dataset.l, note: "d:" + dev + "|h:" + sel.value }) })
-      .then(r => r.json()).then(j => { if (!j.ok) throw 0; ls.set("lastReport", Date.now()); lock(); setTimeout(loadReports, 1500); })
-      .catch(() => { btns.forEach(x => x.disabled = false); msg.textContent = "השליחה נכשלה, נסו שוב."; });
+  const post = (level, extra) => fetch(REPORTS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ hood: sel.value, level, note: "d:" + dev + "|h:" + sel.value + (extra || "") }) })
+    .then(r => r.json()).then(j => { if (!j.ok) throw 0; });
+  const needHood = msg => { msg.textContent = "בחרו שכונה למעלה קודם 🙂"; sel.scrollIntoView({ behavior: "smooth" }); sel.focus(); };
+
+  // "smell now" buttons: in the report tab and the quick card on the Now tab
+  const smellBtns = document.querySelectorAll(".lv button[data-l]");
+  const lock = () => { smellBtns.forEach(b => b.disabled = true);
+    document.querySelectorAll(".repmsg").forEach(m => m.textContent = "תודה! הדיווח נקלט. אפשר לדווח שוב בעוד חצי שעה."); };
+  if (Date.now() - (+ls.get("lastReport") || 0) < 30 * 60e3) lock();
+  smellBtns.forEach(b => b.onclick = () => {
+    const msg = b.closest(".card").querySelector(".repmsg");
+    if (!sel.value) return needHood(msg);
+    smellBtns.forEach(x => x.disabled = true); msg.textContent = "שולח…";
+    post(+b.dataset.l).then(() => { ls.set("lastReport", Date.now()); lock(); setTimeout(loadReports, 1500); })
+      .catch(() => { smellBtns.forEach(x => x.disabled = false); msg.textContent = "השליחה נכשלה, נסו שוב."; });
   });
+
+  // morning question: how was last night? (06:00–13:00, once per morning)
+  const mq = document.getElementById("morningq"), today = new Date().toDateString(), hr = new Date().getHours();
+  if (mq && hr >= 6 && hr < 13 && ls.get("nightAsked") !== today) {
+    mq.style.display = "";
+    mq.querySelectorAll("button[data-v]").forEach(b => b.onclick = () => {
+      const msg = mq.querySelector(".repmsg");
+      if (!sel.value) return needHood(msg);
+      mq.querySelectorAll("button").forEach(x => x.disabled = true); msg.textContent = "שולח…";
+      post(Math.max(1, +b.dataset.v), "|q:night|v:" + b.dataset.v).then(() => {
+        ls.set("nightAsked", today); msg.textContent = "תודה! זה עוזר לנו לבדוק את התחזית ולהבין את ההבדלים בין השכונות.";
+      }).catch(() => { mq.querySelectorAll("button").forEach(x => x.disabled = false); msg.textContent = "השליחה נכשלה, נסו שוב."; });
+    });
+  }
 })();
 
 // ---- neighbours' reports: read straight from the reports sheet (live), fall back to the 10-min summary ----
@@ -512,8 +551,8 @@ function loadReports() {
   fetch(REPORTS_URL + "?days=1").then(r => r.json()).then(j => {
     REP_RAW = (j.reports || []).map(r => {
       const m = String(r.note || "").match(/h:([^|]+)/);
-      return { t: new Date(r.t), hood: m && m[1] ? m[1] : r.hood, level: +r.level || 1 };
-    });
+      return { t: new Date(r.t), hood: m && m[1] ? m[1] : r.hood, level: +r.level || 1, q: /q:night/.test(String(r.note || "")) };
+    }).filter(r => !r.q);
     renderReports();
   }).catch(() => renderReports());
 }

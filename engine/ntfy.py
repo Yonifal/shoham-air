@@ -16,11 +16,14 @@ def topic(key: str) -> str:
     return f"{NTFY_PREFIX}-{key}"
 
 
-def publish(key: str, title: str, message: str, priority: int = 3, tags=None):
+REPORT_LINK = SITE + "docs/#now"   # the Now tab has the one-tap report and the morning question
+
+
+def publish(key: str, title: str, message: str, priority: int = 3, tags=None, click: str = SITE):
     try:
         requests.post("https://ntfy.sh/", json={
             "topic": topic(key), "title": title, "message": message, "priority": priority,
-            "tags": tags or [], "click": SITE}, timeout=20)
+            "tags": tags or [], "click": click}, timeout=20)
     except Exception as e:  # alerts must never break the station check
         print("ntfy failed:", e)
 
@@ -41,8 +44,9 @@ def check_thresholds(raw, state: dict) -> dict:
             heavy = thr >= 3 if col == "Benzene" else thr >= 37.5
             publish(key, f"{name} עלה מעל {thr:g} בהדרים",
                     f"{name} עכשיו {fmt(last)} מק\"ג/מ\"ק (ממוצע רבע שעה {fmt(mean15)}). "
-                    + ("מומלץ לסגור חלונות." if heavy else "שווה לעקוב."),
-                    priority=4 if heavy else 3, tags=["warning"])
+                    + ("מומלץ לסגור חלונות." if heavy else "שווה לעקוב.")
+                    + " מריחים אצלכם? לחצו על ההתראה ודווחו בלחיצה אחת.",
+                    priority=4 if heavy else 3, tags=["warning"], click=REPORT_LINK)
             state[key] = True
         elif above and len(v) >= 6 and float(v.tail(6).max()) < thr:  # 30 minutes (6 readings) below the line
             hour = v.index[-1].hour
@@ -59,5 +63,7 @@ def check_thresholds(raw, state: dict) -> dict:
     return state
 
 
-def forecast(text: str):
-    publish(NTFY_FORECAST, "אוויר בשוהם", text, priority=3, tags=["cloud"])
+def forecast(text: str, ask_night: bool = False):
+    if ask_night:
+        text += "\n☀️ איך היה הלילה אצלכם? לחצו כאן וספרו בלחיצה אחת."
+    publish(NTFY_FORECAST, "אוויר בשוהם", text, priority=3, tags=["cloud"], click=REPORT_LINK if ask_night else SITE)
