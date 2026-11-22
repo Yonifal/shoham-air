@@ -27,6 +27,15 @@
     "08:00"
    ],
    "peak": "01:00",
+   "official": {
+    "level": "uncertain",
+    "prob": 0.55,
+    "window": [
+     "01:00",
+     "08:00"
+    ],
+    "issued": "15:24"
+   },
    "rest": {
     "prob": 0.24,
     "level": "uncertain",
@@ -741,5 +750,5 @@
    "risk": 0.89
   }
  ],
- "updated": "2026-11-22T15:24+02:00"
+ "updated": "2026-11-22T15:36+02:00"
 }
