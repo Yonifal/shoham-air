@@ -13,3 +13,4 @@ night,forecast,prob,issued,smoke_hours,bz_max,peak,bad,outcome,note
 2026-11-19,high,1.0,15:23,10,2.61,20:00,True,hit,
 2026-11-20,high,1.0,16:21,12,3.81,01:00,True,hit,
 2026-11-21,high,0.99,15:27,11,3.39,22:00,True,hit,
+2026-11-22,uncertain,0.55,15:24,5,3.24,02:00,True,open,

@@ -1,39 +1,27 @@
 {
  "last": {
-  "night": "2026-11-21",
-  "forecast": "high",
-  "prob": "0.99",
-  "issued": "15:27",
-  "smoke_hours": 11,
-  "bz_max": 3.39,
-  "peak": "22:00",
+  "night": "2026-11-22",
+  "forecast": "uncertain",
+  "prob": "0.55",
+  "issued": "15:24",
+  "smoke_hours": 5,
+  "bz_max": 3.24,
+  "peak": "02:00",
   "bad": true,
-  "outcome": "hit",
+  "outcome": "open",
   "note": NaN,
-  "text": "צדקנו: היה עשן",
-  "forecast_label": "עשן צפוי"
+  "text": "לא התחייבנו (המודלים היו חלוקים)",
+  "forecast_label": "לא ודאי"
  },
  "stats": {
-  "nights": 14,
+  "nights": 15,
   "scored": 13,
   "hits": 12,
   "false_alarms": 1,
   "misses": 0,
-  "open": 1
+  "open": 2
  },
  "history": [
-  {
-   "night": "2026-11-08",
-   "forecast": "high",
-   "prob": "0.62",
-   "issued": "15:34",
-   "smoke_hours": "0",
-   "bz_max": "0.54",
-   "peak": "02:00",
-   "bad": "False",
-   "outcome": "false_alarm",
-   "note": "מערכת ישנה (מודל יחיד)"
-  },
   {
    "night": "2026-11-09",
    "forecast": "medium",
@@ -183,13 +171,25 @@
    "forecast": "high",
    "prob": "0.99",
    "issued": "15:27",
-   "smoke_hours": 11,
-   "bz_max": 3.39,
+   "smoke_hours": "11",
+   "bz_max": "3.39",
    "peak": "22:00",
-   "bad": true,
+   "bad": "True",
    "outcome": "hit",
+   "note": NaN
+  },
+  {
+   "night": "2026-11-22",
+   "forecast": "uncertain",
+   "prob": "0.55",
+   "issued": "15:24",
+   "smoke_hours": 5,
+   "bz_max": 3.24,
+   "peak": "02:00",
+   "bad": true,
+   "outcome": "open",
    "note": NaN
   }
  ],
- "updated": "2026-11-22T07:09+02:00"
+ "updated": "2026-11-23T07:03+02:00"
 }
