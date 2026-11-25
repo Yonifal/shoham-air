@@ -1,1 +1,1 @@
-{"forecast_sent": "2026-11-25", "levels": {"2026-11-25": "high", "2026-11-26": "high"}, "official": {"2026-11-25": {"level": "high", "prob": 0.92, "window": ["23:00", "09:00"], "issued": "15:31"}}, "ntfy": {"pm15": false, "bz15": false, "bz3": false, "pm37": false}, "live_status": "smoke"}
+{"forecast_sent": "2026-11-25", "levels": {"2026-11-25": "high", "2026-11-26": "high"}, "official": {"2026-11-25": {"level": "high", "prob": 0.92, "window": ["23:00", "09:00"], "issued": "15:31"}}, "ntfy": {"pm15": true, "bz15": true, "bz3": false, "pm37": false}, "live_status": "smoke"}
