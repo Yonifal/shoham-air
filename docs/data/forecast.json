@@ -24,6 +24,12 @@
    "strong": 0.02,
    "window": null,
    "peak": null,
+   "official": {
+    "level": "low",
+    "prob": 0.06,
+    "window": null,
+    "issued": "15:32"
+   },
    "rest": {
     "prob": 0.14,
     "level": "low",
@@ -738,5 +744,5 @@
    "risk": 0.12
   }
  ],
- "updated": "2026-11-28T15:32+02:00"
+ "updated": "2026-11-28T16:29+02:00"
 }
